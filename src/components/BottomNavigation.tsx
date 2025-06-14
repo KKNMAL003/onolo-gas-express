@@ -1,7 +1,7 @@
 
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Home, User, Menu } from 'lucide-react';
+import { Home, ShoppingCart, MessageSquare, Menu, FileText } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface NavItem {
@@ -12,9 +12,9 @@ interface NavItem {
 
 const navItems: NavItem[] = [
   { icon: Home, label: 'Home', path: '/' },
-  { icon: User, label: 'Order', path: '/order' },
-  { icon: User, label: 'Cart', path: '/cart' },
-  { icon: User, label: 'Chat', path: '/chat' },
+  { icon: FileText, label: 'Order', path: '/order' },
+  { icon: ShoppingCart, label: 'Cart', path: '/cart' },
+  { icon: MessageSquare, label: 'Chat', path: '/chat' },
   { icon: Menu, label: 'Menu', path: '/menu' },
 ];
 

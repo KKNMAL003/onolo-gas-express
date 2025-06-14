@@ -1,10 +1,12 @@
 
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
-import { ArrowRight } from 'lucide-react';
+import { ArrowRight, LogIn } from 'lucide-react';
+import { useAuth } from '@/contexts/AuthContext';
 
 const Home = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
 
   return (
     <div className="min-h-screen bg-onolo-dark text-white p-6">
@@ -39,14 +41,26 @@ const Home = () => {
           </div>
         </div>
 
-        {/* CTA Button */}
-        <button
-          onClick={() => navigate('/order')}
-          className="w-full bg-onolo-orange hover:bg-onolo-orange-dark text-white font-semibold py-4 px-6 rounded-2xl flex items-center justify-center space-x-2 transition-colors"
-        >
-          <span>Get Started</span>
-          <ArrowRight className="w-5 h-5" />
-        </button>
+        {/* CTA Buttons */}
+        <div className="space-y-4 mb-12">
+          <button
+            onClick={() => navigate('/order')}
+            className="w-full bg-onolo-orange hover:bg-onolo-orange-dark text-white font-semibold py-4 px-6 rounded-2xl flex items-center justify-center space-x-2 transition-colors"
+          >
+            <span>Get Started</span>
+            <ArrowRight className="w-5 h-5" />
+          </button>
+
+          {!user && (
+            <button
+              onClick={() => navigate('/auth')}
+              className="w-full bg-transparent border-2 border-onolo-orange text-onolo-orange hover:bg-onolo-orange hover:text-white font-semibold py-4 px-6 rounded-2xl flex items-center justify-center space-x-2 transition-colors"
+            >
+              <LogIn className="w-5 h-5" />
+              <span>Sign In for Better Experience</span>
+            </button>
+          )}
+        </div>
 
         {/* Pagination Dots */}
         <div className="flex justify-center space-x-2 mt-12">
