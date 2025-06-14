@@ -5,6 +5,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ArrowLeft, Eye, EyeOff } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
 
 const Auth = () => {
   const [isSignUp, setIsSignUp] = useState(false);
@@ -14,10 +15,10 @@ const Auth = () => {
   const [lastName, setLastName] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
   
   const { signUp, signIn, user } = useAuth();
   const navigate = useNavigate();
+  const { toast } = useToast();
 
   useEffect(() => {
     if (user) {
@@ -28,23 +29,60 @@ const Auth = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
-    setError('');
 
     try {
       let result;
       if (isSignUp) {
+        if (!firstName || !lastName) {
+          toast({
+            title: "Error",
+            description: "Please fill in all fields",
+            variant: "destructive",
+          });
+          setLoading(false);
+          return;
+        }
         result = await signUp(email, password, firstName, lastName);
       } else {
         result = await signIn(email, password);
       }
 
       if (result.error) {
-        setError(result.error.message);
+        let errorMessage = result.error.message;
+        
+        // Handle specific error cases
+        if (errorMessage.includes('Email not confirmed')) {
+          errorMessage = 'Please check your email and click the confirmation link before signing in.';
+        } else if (errorMessage.includes('Invalid login credentials')) {
+          errorMessage = 'Invalid email or password. Please check your credentials.';
+        } else if (errorMessage.includes('User already registered')) {
+          errorMessage = 'An account with this email already exists. Please sign in instead.';
+        }
+        
+        toast({
+          title: "Authentication Error",
+          description: errorMessage,
+          variant: "destructive",
+        });
       } else if (isSignUp) {
-        setError('Please check your email to confirm your account.');
+        toast({
+          title: "Success!",
+          description: "Please check your email to confirm your account before signing in.",
+        });
+        setIsSignUp(false); // Switch to sign in view
+      } else {
+        toast({
+          title: "Welcome back!",
+          description: "You have successfully signed in.",
+        });
       }
     } catch (err) {
-      setError('An unexpected error occurred');
+      console.error('Auth error:', err);
+      toast({
+        title: "Error",
+        description: "An unexpected error occurred. Please try again.",
+        variant: "destructive",
+      });
     } finally {
       setLoading(false);
     }
@@ -108,6 +146,7 @@ const Auth = () => {
                 onChange={(e) => setPassword(e.target.value)}
                 className="bg-onolo-dark-lighter border-onolo-gray text-white pr-10"
                 required
+                minLength={6}
               />
               <button
                 type="button"
@@ -118,12 +157,6 @@ const Auth = () => {
               </button>
             </div>
           </div>
-
-          {error && (
-            <div className="p-3 bg-red-500/20 border border-red-500 rounded-lg text-red-200 text-sm">
-              {error}
-            </div>
-          )}
 
           <Button
             type="submit"

@@ -5,7 +5,7 @@ import { User } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 
 export const Header = () => {
-  const { user } = useAuth();
+  const { user, profile } = useAuth();
   const navigate = useNavigate();
 
   const handleUserClick = () => {
@@ -15,6 +15,8 @@ export const Header = () => {
       navigate('/auth');
     }
   };
+
+  const displayName = profile?.first_name || user?.user_metadata?.first_name || 'Profile';
 
   return (
     <header className="flex items-center justify-between p-4 bg-onolo-dark border-b border-onolo-dark-lighter">
@@ -33,7 +35,7 @@ export const Header = () => {
               <User className="w-5 h-5 text-white" />
             </div>
             <span className="text-sm text-white hidden sm:block">
-              {user.user_metadata?.first_name || 'Profile'}
+              {displayName}
             </span>
           </div>
         ) : (
