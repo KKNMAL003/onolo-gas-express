@@ -1,9 +1,9 @@
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { MapPin, Loader2, AlertCircle } from 'lucide-react';
+import { MapPin, Loader2 } from 'lucide-react';
 import { useLocation } from '@/hooks/useLocation';
 
 interface LocationPickerProps {
@@ -13,101 +13,121 @@ interface LocationPickerProps {
 
 const LocationPicker: React.FC<LocationPickerProps> = ({ onLocationSelect, initialAddress = '' }) => {
   const [address, setAddress] = useState(initialAddress);
-  const [isValidating, setIsValidating] = useState(false);
-  const [validationResult, setValidationResult] = useState<{ isValid: boolean; message: string } | null>(null);
-  const { isLoading, getCurrentLocation, validateServiceArea, calculateDeliveryCost } = useLocation();
+  const [showSuggestions, setShowSuggestions] = useState(false);
+  const { isLoading, suggestions, getCurrentLocation, searchLocation, selectLocation } = useLocation();
+  const suggestionsRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    const delayedSearch = setTimeout(() => {
+      if (address) {
+        searchLocation(address);
+      }
+    }, 300);
+
+    return () => clearTimeout(delayedSearch);
+  }, [address, searchLocation]);
+
+  useEffect(() => {
+    const handleClickOutside = (event: MouseEvent) => {
+      if (suggestionsRef.current && !suggestionsRef.current.contains(event.target as Node)) {
+        setShowSuggestions(false);
+      }
+    };
+
+    document.addEventListener('mousedown', handleClickOutside);
+    return () => document.removeEventListener('mousedown', handleClickOutside);
+  }, []);
 
   const handleGetCurrentLocation = async () => {
     const location = await getCurrentLocation();
     if (location) {
       setAddress(location.address);
-      await validateLocation(location.latitude, location.longitude);
+      onLocationSelect({
+        latitude: location.latitude,
+        longitude: location.longitude,
+        address: location.address,
+        deliveryCost: 0 // No delivery cost calculation for now
+      });
     }
   };
 
-  const validateLocation = async (lat: number, lng: number) => {
-    setIsValidating(true);
-    try {
-      const [isValid, deliveryCost] = await Promise.all([
-        validateServiceArea(lat, lng),
-        calculateDeliveryCost(lat, lng)
-      ]);
-
-      if (isValid) {
-        setValidationResult({ isValid: true, message: `Delivery available - R${deliveryCost.toFixed(2)}` });
-        onLocationSelect({ latitude: lat, longitude: lng, address, deliveryCost });
-      } else {
-        setValidationResult({ isValid: false, message: 'Sorry, we don\'t deliver to this area yet.' });
-      }
-    } catch (error) {
-      setValidationResult({ isValid: false, message: 'Error validating location. Please try again.' });
-    } finally {
-      setIsValidating(false);
-    }
+  const handleSuggestionSelect = (suggestion: any) => {
+    const location = selectLocation(suggestion);
+    setAddress(location.address);
+    setShowSuggestions(false);
+    
+    onLocationSelect({
+      latitude: location.latitude,
+      longitude: location.longitude,
+      address: location.address,
+      deliveryCost: 0 // No delivery cost calculation for now
+    });
   };
 
-  const handleAddressSubmit = async () => {
-    // In a real implementation, you'd use a geocoding service to convert address to coordinates
-    // For now, we'll use mock coordinates for demonstration
-    const mockCoordinates = { lat: -26.2041, lng: 28.0473 }; // Johannesburg
-    await validateLocation(mockCoordinates.lat, mockCoordinates.lng);
+  const handleAddressChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    setAddress(e.target.value);
+    setShowSuggestions(true);
   };
 
   return (
     <div className="space-y-4">
       <div>
         <Label htmlFor="address">Delivery Address</Label>
-        <div className="flex space-x-2 mt-2">
-          <Input
-            id="address"
-            value={address}
-            onChange={(e) => setAddress(e.target.value)}
-            placeholder="Enter your delivery address"
-            className="flex-1"
-          />
-          <Button
-            type="button"
-            onClick={handleGetCurrentLocation}
-            disabled={isLoading}
-            variant="outline"
-            size="sm"
-          >
-            {isLoading ? (
-              <Loader2 className="w-4 h-4 animate-spin" />
-            ) : (
-              <MapPin className="w-4 h-4" />
-            )}
-          </Button>
+        <div className="relative mt-2">
+          <div className="flex space-x-2">
+            <div className="relative flex-1">
+              <Input
+                id="address"
+                value={address}
+                onChange={handleAddressChange}
+                onFocus={() => setShowSuggestions(true)}
+                placeholder="Enter your delivery address"
+                className="w-full"
+              />
+              
+              {suggestions.length > 0 && showSuggestions && (
+                <div 
+                  ref={suggestionsRef}
+                  className="absolute top-full left-0 right-0 bg-white border border-gray-300 rounded-md shadow-lg z-50 max-h-60 overflow-y-auto"
+                >
+                  {suggestions.map((suggestion, index) => (
+                    <button
+                      key={index}
+                      onClick={() => handleSuggestionSelect(suggestion)}
+                      className="w-full px-4 py-2 text-left hover:bg-gray-100 border-b border-gray-100 last:border-b-0 text-black"
+                    >
+                      <div className="text-sm">
+                        {suggestion.display_name}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+            
+            <Button
+              type="button"
+              onClick={handleGetCurrentLocation}
+              disabled={isLoading}
+              variant="outline"
+              size="sm"
+            >
+              {isLoading ? (
+                <Loader2 className="w-4 h-4 animate-spin" />
+              ) : (
+                <MapPin className="w-4 h-4" />
+              )}
+            </Button>
+          </div>
         </div>
       </div>
 
       {address && (
-        <Button
-          type="button"
-          onClick={handleAddressSubmit}
-          disabled={isValidating}
-          className="w-full"
-          variant="outline"
-        >
-          {isValidating ? (
-            <>
-              <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-              Validating...
-            </>
-          ) : (
-            'Validate Address'
-          )}
-        </Button>
-      )}
-
-      {validationResult && (
-        <div className={`flex items-center space-x-2 p-3 rounded-lg ${
-          validationResult.isValid 
-            ? 'bg-green-50 text-green-700 border border-green-200' 
-            : 'bg-red-50 text-red-700 border border-red-200'
-        }`}>
-          <AlertCircle className="w-4 h-4" />
-          <span className="text-sm">{validationResult.message}</span>
+        <div className="p-3 bg-green-50 text-green-700 border border-green-200 rounded-lg">
+          <div className="flex items-center space-x-2">
+            <MapPin className="w-4 h-4" />
+            <span className="text-sm">Location selected: {address}</span>
+          </div>
         </div>
       )}
     </div>

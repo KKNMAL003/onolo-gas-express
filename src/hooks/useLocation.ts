@@ -1,6 +1,5 @@
 
 import { useState, useCallback } from 'react';
-import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 
 interface LocationData {
@@ -9,15 +8,16 @@ interface LocationData {
   address: string;
 }
 
-interface ServiceArea {
-  id: string;
-  name: string;
-  delivery_cost: number;
+interface LocationSuggestion {
+  display_name: string;
+  lat: string;
+  lon: string;
 }
 
 export const useLocation = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [location, setLocation] = useState<LocationData | null>(null);
+  const [suggestions, setSuggestions] = useState<LocationSuggestion[]>([]);
   const { toast } = useToast();
 
   const getCurrentLocation = useCallback(async (): Promise<LocationData | null> => {
@@ -37,12 +37,21 @@ export const useLocation = () => {
 
       const { latitude, longitude } = position.coords;
       
-      // Reverse geocoding using a simple approach (you can integrate with Google Maps API)
-      const address = `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
+      // Reverse geocoding using Nominatim (OpenStreetMap)
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/reverse?format=json&lat=${latitude}&lon=${longitude}&addressdetails=1`
+      );
       
-      const locationData = { latitude, longitude, address };
-      setLocation(locationData);
-      return locationData;
+      if (response.ok) {
+        const data = await response.json();
+        const address = data.display_name || `${latitude.toFixed(6)}, ${longitude.toFixed(6)}`;
+        
+        const locationData = { latitude, longitude, address };
+        setLocation(locationData);
+        return locationData;
+      } else {
+        throw new Error('Failed to get address');
+      }
     } catch (error) {
       console.error('Error getting location:', error);
       toast({
@@ -56,57 +65,48 @@ export const useLocation = () => {
     }
   }, [toast]);
 
-  const validateServiceArea = useCallback(async (latitude: number, longitude: number): Promise<boolean> => {
-    try {
-      const { data, error } = await supabase.rpc('validate_service_area', {
-        delivery_lat: latitude,
-        delivery_lng: longitude
-      });
+  const searchLocation = useCallback(async (query: string): Promise<void> => {
+    if (query.length < 3) {
+      setSuggestions([]);
+      return;
+    }
 
-      if (error) throw error;
-      return data;
+    try {
+      const response = await fetch(
+        `https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}&countrycodes=za&limit=5&addressdetails=1`
+      );
+      
+      if (response.ok) {
+        const data = await response.json();
+        setSuggestions(data);
+      } else {
+        setSuggestions([]);
+      }
     } catch (error) {
-      console.error('Error validating service area:', error);
-      return false;
+      console.error('Error searching location:', error);
+      setSuggestions([]);
     }
   }, []);
 
-  const calculateDeliveryCost = useCallback(async (latitude: number, longitude: number): Promise<number> => {
-    try {
-      const { data, error } = await supabase.rpc('calculate_delivery_cost', {
-        delivery_lat: latitude,
-        delivery_lng: longitude
-      });
-
-      if (error) throw error;
-      return data || 0;
-    } catch (error) {
-      console.error('Error calculating delivery cost:', error);
-      return 0;
-    }
-  }, []);
-
-  const getServiceAreas = useCallback(async (): Promise<ServiceArea[]> => {
-    try {
-      const { data, error } = await supabase
-        .from('service_areas')
-        .select('id, name, delivery_cost')
-        .eq('active', true);
-
-      if (error) throw error;
-      return data || [];
-    } catch (error) {
-      console.error('Error fetching service areas:', error);
-      return [];
-    }
+  const selectLocation = useCallback((suggestion: LocationSuggestion): LocationData => {
+    const locationData = {
+      latitude: parseFloat(suggestion.lat),
+      longitude: parseFloat(suggestion.lon),
+      address: suggestion.display_name
+    };
+    
+    setLocation(locationData);
+    setSuggestions([]);
+    
+    return locationData;
   }, []);
 
   return {
     isLoading,
     location,
+    suggestions,
     getCurrentLocation,
-    validateServiceArea,
-    calculateDeliveryCost,
-    getServiceAreas
+    searchLocation,
+    selectLocation
   };
 };

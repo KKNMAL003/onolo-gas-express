@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -100,7 +101,7 @@ const Checkout = () => {
     if (!locationData) {
       toast({
         title: "Location required",
-        description: "Please validate your delivery address.",
+        description: "Please select your delivery address.",
         variant: "destructive",
       });
       return;
@@ -134,7 +135,7 @@ const Checkout = () => {
           delivery_latitude: locationData.latitude,
           delivery_longitude: locationData.longitude,
           delivery_cost: deliveryCost,
-          service_area_validated: true,
+          service_area_validated: true, // Always true since we removed validation
           auto_status_enabled: true
         })
         .select()
