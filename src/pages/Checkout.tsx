@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -70,6 +69,36 @@ const Checkout = () => {
 
   const handleSlotSelect = (slot: typeof deliverySlot) => {
     setDeliverySlot(slot);
+  };
+
+  const sendOrderConfirmationEmail = async (orderId: string) => {
+    try {
+      console.log('Sending order confirmation email for order:', orderId);
+      
+      const { data, error } = await supabase.functions.invoke('send-order-email', {
+        body: {
+          orderId,
+          type: 'confirmation',
+          customerEmail: formData.email,
+          customerName: formData.name
+        }
+      });
+
+      if (error) {
+        console.error('Error sending confirmation email:', error);
+        // Don't throw here - we don't want to fail the order if email fails
+        toast({
+          title: "Order placed successfully!",
+          description: "Your order was created but there was an issue sending the confirmation email. You can view your order in the Orders section.",
+          variant: "default",
+        });
+      } else {
+        console.log('Confirmation email sent successfully:', data);
+      }
+    } catch (error) {
+      console.error('Failed to send confirmation email:', error);
+      // Don't throw here - we don't want to fail the order if email fails
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -167,6 +196,9 @@ const Checkout = () => {
 
       console.log('Order items created successfully');
 
+      // Send confirmation email
+      await sendOrderConfirmationEmail(order.id);
+
       // Handle payment method
       if (formData.paymentMethod === 'payfast') {
         setOrderData({
@@ -212,7 +244,12 @@ const Checkout = () => {
     }
   };
 
-  const handlePaymentInitiated = () => {
+  const handlePaymentInitiated = async () => {
+    // Send email for payment-based orders too
+    if (orderData?.orderId) {
+      await sendOrderConfirmationEmail(orderData.orderId);
+    }
+    
     clearCart();
     toast({
       title: "Payment initiated",
