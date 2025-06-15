@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { Resend } from "npm:resend@4.0.0";
@@ -101,14 +100,23 @@ serve(async (req) => {
       throw new Error("RESEND_API_KEY environment variable is not set");
     }
 
+    // Send to customer and CC company email
+    const recipients = [customerEmail];
+    const companyEmail = "info@onologroup.com"; // Add your actual company email here
+    
     const emailResponse = await resend.emails.send({
-      from: "Onolo Group <orders@onologroup.com>",
-      to: [customerEmail],
+      from: "Onolo Group <onboarding@resend.dev>", // Using Resend's verified domain
+      to: recipients,
+      cc: [companyEmail], // Company gets a copy
       subject,
       html: htmlContent,
     });
 
-    logStep("Email sent successfully", { emailId: emailResponse.data?.id, to: customerEmail });
+    logStep("Email sent successfully", { 
+      emailId: emailResponse.data?.id, 
+      to: customerEmail, 
+      cc: companyEmail 
+    });
 
     // Update order with email sent status
     const updateData: any = {};
