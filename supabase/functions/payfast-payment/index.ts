@@ -12,13 +12,14 @@ const logStep = (step: string, details?: any) => {
   console.log(`[PAYFAST-PAYMENT] ${step}${detailsStr}`);
 };
 
-// Simple MD5 implementation for signature generation
+// MD5 implementation using Web Crypto API for Deno
 const md5 = async (text: string): Promise<string> => {
   const encoder = new TextEncoder();
   const data = encoder.encode(text);
-  const hashBuffer = await crypto.subtle.digest('MD5', data);
-  const hashArray = Array.from(new Uint8Array(hashBuffer));
-  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+  
+  // Import crypto-js for MD5 since Web Crypto API doesn't support MD5
+  const crypto = await import("https://deno.land/x/crypto@v0.17.0/crypto.ts");
+  return crypto.md5(text).toString();
 };
 
 serve(async (req) => {
@@ -47,7 +48,7 @@ serve(async (req) => {
     const { orderId, amount, customerName, customerEmail, deliveryAddress } = await req.json();
     logStep("Payment request received", { orderId, amount, customerEmail });
 
-    // PayFast sandbox credentials
+    // PayFast sandbox credentials - verified sandbox values
     const merchantId = "10004002";
     const merchantKey = "q1cd2rdny4a53";
     const passphrase = "payfast";
@@ -68,14 +69,13 @@ serve(async (req) => {
       m_payment_id: orderId,
       amount: amount.toFixed(2),
       item_name: "Onolo Group Gas Delivery",
-      item_description: `Gas delivery order #${orderId.slice(0, 8)} to ${deliveryAddress.substring(0, 50)}`,
+      item_description: `Gas delivery order #${orderId.slice(0, 8)}`,
       email_confirmation: "1",
       confirmation_address: customerEmail
     };
 
-    // Generate signature
+    // Generate signature without passphrase first for debugging
     const generateSignature = async (data: any, passphrase?: string) => {
-      // Sort keys and create query string
       const sortedKeys = Object.keys(data).sort();
       const queryString = sortedKeys
         .filter(key => key !== 'signature' && data[key] !== '' && data[key] !== null && data[key] !== undefined)

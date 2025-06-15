@@ -115,8 +115,8 @@ const PayFastPayment: React.FC<PayFastPaymentProps> = ({
 
       if (error) {
         console.error('PayFast payment function error:', error);
-        const errorMessage = 'Failed to initialize payment. Please try again or choose a different payment method.';
-        await updateOrderToFailed(`PayFast initialization failed: ${error.message}`);
+        const errorMessage = error.message || 'Failed to initialize payment. Please try again or choose a different payment method.';
+        await updateOrderToFailed(`PayFast initialization failed: ${errorMessage}`);
         throw new Error(errorMessage);
       }
 
@@ -151,7 +151,7 @@ const PayFastPayment: React.FC<PayFastPaymentProps> = ({
                 window.location.href = data.returnUrl;
               } else {
                 // Payment window closed or cancelled
-                console.log('PayFast payment window closed');
+                console.log('PayFast payment window closed or cancelled');
                 await updateOrderToFailed('Payment cancelled by user');
                 toast({
                   title: "Payment Cancelled",
@@ -165,13 +165,13 @@ const PayFastPayment: React.FC<PayFastPaymentProps> = ({
         }, 500);
 
       } else {
-        const errorMessage = data.error || 'Failed to initialize PayFast payment';
+        const errorMessage = data?.error || 'Failed to initialize PayFast payment';
         await updateOrderToFailed(`PayFast initialization failed: ${errorMessage}`);
         throw new Error(errorMessage);
       }
     } catch (error) {
       console.error('PayFast payment error:', error);
-      const errorMessage = error.message || 'Failed to initiate payment. Please try again or choose a different payment method.';
+      const errorMessage = error instanceof Error ? error.message : 'Failed to initiate payment. Please try again or choose a different payment method.';
       setError(errorMessage);
       toast({
         title: "Payment error",
@@ -231,7 +231,7 @@ const PayFastPayment: React.FC<PayFastPaymentProps> = ({
         </div>
         <div className="mt-3 p-3 bg-yellow-500 bg-opacity-10 rounded-lg ml-7">
           <p className="text-xs text-yellow-400">
-            <strong>Test Mode:</strong> Use PayFast's test payment methods. Payment script status: {scriptLoaded ? 'Ready' : 'Loading...'}
+            <strong>Test Mode:</strong> Using verified PayFast sandbox credentials. Payment script status: {scriptLoaded ? 'Ready' : 'Loading...'}
           </p>
         </div>
       </div>

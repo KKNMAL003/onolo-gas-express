@@ -111,38 +111,58 @@ export const useOrderCreation = () => {
 
     try {
       console.log('Creating order with payment method:', formData.paymentMethod);
+      console.log('Form data:', formData);
+      console.log('Location data:', locationData);
+      console.log('Delivery slot:', deliverySlot);
       
       // Determine initial status based on payment method
       let initialStatus = 'Pending';
       if (formData.paymentMethod === 'cash_on_delivery') {
         initialStatus = 'order_received'; // Cash orders are automatically received
+      } else if (formData.paymentMethod === 'eft') {
+        initialStatus = 'Pending'; // EFT orders need proof of payment
       }
       
+      // Validate required fields
+      if (!formData.name?.trim()) {
+        throw new Error('Customer name is required');
+      }
+      if (!formData.email?.trim()) {
+        throw new Error('Customer email is required');
+      }
+      if (!formData.phone?.trim()) {
+        throw new Error('Phone number is required');
+      }
+      
+      const orderData = {
+        user_id: user.id,
+        total_amount: finalTotal,
+        delivery_address: locationData.address,
+        delivery_phone: formData.phone.trim(),
+        payment_method: formData.paymentMethod,
+        customer_name: formData.name.trim(),
+        customer_email: formData.email.trim(),
+        status: initialStatus,
+        preferred_delivery_window: deliverySlot.timeWindow,
+        delivery_date: deliverySlot.date,
+        delivery_latitude: locationData.latitude,
+        delivery_longitude: locationData.longitude,
+        delivery_cost: deliveryCost,
+        service_area_validated: true,
+        auto_status_enabled: true
+      };
+
+      console.log('Order data to insert:', orderData);
+
       const { data: order, error: orderError } = await supabase
         .from('orders')
-        .insert({
-          user_id: user.id,
-          total_amount: finalTotal,
-          delivery_address: locationData.address,
-          delivery_phone: formData.phone,
-          payment_method: formData.paymentMethod,
-          customer_name: formData.name,
-          customer_email: formData.email,
-          status: initialStatus,
-          preferred_delivery_window: deliverySlot.timeWindow,
-          delivery_date: deliverySlot.date,
-          delivery_latitude: locationData.latitude,
-          delivery_longitude: locationData.longitude,
-          delivery_cost: deliveryCost,
-          service_area_validated: true,
-          auto_status_enabled: true
-        })
+        .insert(orderData)
         .select()
         .single();
 
       if (orderError) {
         console.error('Order creation error:', orderError);
-        throw orderError;
+        throw new Error(`Failed to create order: ${orderError.message}`);
       }
 
       console.log('Order created successfully:', order.id);
@@ -156,13 +176,17 @@ export const useOrderCreation = () => {
         total_price: item.price * item.quantity
       }));
 
+      console.log('Order items to insert:', orderItems);
+
       const { error: itemsError } = await supabase
         .from('order_items')
         .insert(orderItems);
 
       if (itemsError) {
         console.error('Order items creation error:', itemsError);
-        throw itemsError;
+        // Try to clean up the order if items failed
+        await supabase.from('orders').delete().eq('id', order.id);
+        throw new Error(`Failed to create order items: ${itemsError.message}`);
       }
 
       console.log('Order items created successfully');
@@ -175,9 +199,10 @@ export const useOrderCreation = () => {
       return order;
     } catch (error) {
       console.error('Error placing order:', error);
+      const errorMessage = error instanceof Error ? error.message : 'Unknown error occurred';
       toast({
         title: "Error placing order",
-        description: "There was an error processing your order. Please try again.",
+        description: errorMessage,
         variant: "destructive",
       });
       return null;
