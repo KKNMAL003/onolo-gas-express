@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -69,43 +70,6 @@ const Checkout = () => {
 
   const handleSlotSelect = (slot: typeof deliverySlot) => {
     setDeliverySlot(slot);
-  };
-
-  const sendOrderConfirmationEmail = async (orderId: string) => {
-    try {
-      console.log('Attempting to send order confirmation email for order:', orderId);
-      
-      const { data, error } = await supabase.functions.invoke('send-order-email', {
-        body: {
-          orderId,
-          type: 'confirmation',
-          customerEmail: formData.email,
-          customerName: formData.name
-        }
-      });
-
-      if (error) {
-        console.error('Error sending confirmation email:', error);
-        toast({
-          title: "Email notification failed",
-          description: "Order was placed successfully, but we couldn't send the confirmation email. You can resend it from your orders page.",
-          variant: "destructive",
-        });
-      } else {
-        console.log('Confirmation email sent successfully:', data);
-        toast({
-          title: "Email sent!",
-          description: "Order confirmation email has been sent to your email address.",
-        });
-      }
-    } catch (error) {
-      console.error('Failed to send confirmation email:', error);
-      toast({
-        title: "Email notification failed",
-        description: "Order was placed successfully, but we couldn't send the confirmation email. You can resend it from your orders page.",
-        variant: "destructive",
-      });
-    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -203,12 +167,6 @@ const Checkout = () => {
 
       console.log('Order items created successfully');
 
-      // Send order confirmation email for all payment methods except PayFast and PayPal
-      // (PayFast and PayPal will send their own confirmation after payment)
-      if (formData.paymentMethod !== 'payfast' && formData.paymentMethod !== 'paypal') {
-        await sendOrderConfirmationEmail(order.id);
-      }
-
       // Handle payment method
       if (formData.paymentMethod === 'payfast') {
         setOrderData({
@@ -238,7 +196,7 @@ const Checkout = () => {
       
       toast({
         title: "Order placed successfully!",
-        description: `Order #${order.id.slice(0, 8)} has been submitted. Check your email for confirmation.`,
+        description: `Order #${order.id.slice(0, 8)} has been submitted. You'll receive an email confirmation shortly.`,
       });
 
       navigate('/orders');
