@@ -155,6 +155,12 @@ export const useCheckout = () => {
     try {
       console.log('Creating order with payment method:', formData.paymentMethod);
       
+      // Set initial status based on payment method
+      let initialStatus = 'order_received'; // Default status that should be valid
+      if (formData.paymentMethod === 'payfast' || formData.paymentMethod === 'paypal') {
+        initialStatus = 'order_received'; // Will be updated by webhook on payment completion
+      }
+      
       const { data: order, error: orderError } = await supabase
         .from('orders')
         .insert({
@@ -165,7 +171,7 @@ export const useCheckout = () => {
           payment_method: formData.paymentMethod,
           customer_name: formData.name,
           customer_email: formData.email,
-          status: 'pending',
+          status: initialStatus,
           preferred_delivery_window: deliverySlot.timeWindow,
           delivery_date: deliverySlot.date,
           delivery_latitude: locationData.latitude,
