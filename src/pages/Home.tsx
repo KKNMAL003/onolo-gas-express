@@ -16,26 +16,26 @@ const Home = () => {
   };
 
   return (
-    <div className="min-h-screen bg-onolo-dark text-white p-6 relative overflow-hidden">
+    <div className="min-h-screen bg-onolo-dark text-white p-6 relative">
       <div className="max-w-md mx-auto relative">
         {/* Background Graphics */}
-        <div className="absolute inset-0 pointer-events-none">
+        <div className="absolute inset-0 pointer-events-none -z-10">
           {/* Large Grey Location Pin Background */}
-          <div className="absolute top-8 left-1/2 transform -translate-x-1/2 opacity-10 z-0">
+          <div className="absolute top-8 left-1/2 transform -translate-x-1/2 opacity-10">
             <MapPin className="w-32 h-32 text-gray-500" />
           </div>
           
           {/* Orange Flashing Dot */}
-          <div className="absolute top-16 left-1/2 transform -translate-x-1/2 translate-x-2 z-0">
+          <div className="absolute top-16 left-1/2 transform -translate-x-1/2 translate-x-2">
             <div className="w-3 h-3 bg-onolo-orange rounded-full animate-pulse"></div>
           </div>
           
           {/* Additional decorative orange dots */}
-          <div className="absolute top-12 right-8 z-0">
+          <div className="absolute top-12 right-8">
             <div className="w-2 h-2 bg-onolo-orange rounded-full animate-ping opacity-75"></div>
           </div>
           
-          <div className="absolute top-24 left-8 z-0">
+          <div className="absolute top-24 left-8">
             <div className="w-1.5 h-1.5 bg-onolo-orange rounded-full animate-pulse delay-300"></div>
           </div>
         </div>
