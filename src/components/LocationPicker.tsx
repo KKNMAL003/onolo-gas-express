@@ -3,8 +3,9 @@ import React, { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { MapPin, Loader2 } from 'lucide-react';
+import { MapPin, Loader2, AlertTriangle } from 'lucide-react';
 import { useLocation } from '@/hooks/useLocation';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 interface LocationPickerProps {
   onLocationSelect: (location: { latitude: number; longitude: number; address: string; deliveryCost: number }) => void;
@@ -92,6 +93,7 @@ const LocationPicker: React.FC<LocationPickerProps> = ({ onLocationSelect, initi
   };
 
   const fullAddress = constructFullAddress(addressForm);
+  const isNonGautengProvince = addressForm.province !== 'Gauteng';
 
   return (
     <div className="space-y-4">
@@ -198,7 +200,17 @@ const LocationPicker: React.FC<LocationPickerProps> = ({ onLocationSelect, initi
         </select>
       </div>
 
-      {fullAddress && (
+      {/* Non-Gauteng delivery restriction message */}
+      {isNonGautengProvince && (
+        <Alert variant="destructive" className="bg-red-900/20 border-red-500 text-red-400">
+          <AlertTriangle className="h-4 w-4" />
+          <AlertDescription>
+            We currently only deliver within Gauteng province. Please select Gauteng if you wish to place an order, or contact us for special delivery arrangements.
+          </AlertDescription>
+        </Alert>
+      )}
+
+      {fullAddress && !isNonGautengProvince && (
         <div className="p-3 bg-green-50 text-green-700 border border-green-200 rounded-lg">
           <div className="flex items-start space-x-2">
             <MapPin className="w-4 h-4 mt-0.5" />
