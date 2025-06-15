@@ -6,10 +6,12 @@ import { useToast } from '@/hooks/use-toast';
 interface DeliverySlot {
   id: string;
   date: string;
-  time_window: 'morning' | 'afternoon' | 'evening';
+  time_window: string; // Changed from union type to string to match database
   max_orders: number;
   current_orders: number;
   available: boolean;
+  active: boolean | null;
+  created_at: string;
 }
 
 export const useDeliverySlots = () => {
@@ -51,11 +53,26 @@ export const useDeliverySlots = () => {
 
   const reserveSlot = useCallback(async (slotId: string): Promise<boolean> => {
     try {
+      // First get the current slot data
+      const { data: currentSlot, error: fetchError } = await supabase
+        .from('delivery_time_slots')
+        .select('current_orders, max_orders')
+        .eq('id', slotId)
+        .single();
+
+      if (fetchError) throw fetchError;
+
+      // Check if slot is still available
+      if (currentSlot.current_orders >= currentSlot.max_orders) {
+        return false;
+      }
+
+      // Update the slot by incrementing current_orders
       const { error } = await supabase
         .from('delivery_time_slots')
-        .update({ current_orders: supabase.raw('current_orders + 1') })
+        .update({ current_orders: currentSlot.current_orders + 1 })
         .eq('id', slotId)
-        .lt('current_orders', supabase.raw('max_orders'));
+        .lt('current_orders', currentSlot.max_orders);
 
       if (error) throw error;
       return true;
