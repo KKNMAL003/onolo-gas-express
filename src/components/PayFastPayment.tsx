@@ -1,10 +1,10 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
-import { CreditCard, Loader2, AlertTriangle, Info, ExternalLink } from 'lucide-react';
+import { CreditCard, Loader2, AlertTriangle, Info } from 'lucide-react';
 
 interface PayFastPaymentProps {
   orderId: string;
@@ -27,6 +27,7 @@ const PayFastPayment: React.FC<PayFastPaymentProps> = ({
   const { toast } = useToast();
   const [isProcessing, setIsProcessing] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [paymentData, setPaymentData] = useState<any>(null);
 
   const updateOrderToFailed = async (reason: string) => {
     try {
@@ -46,7 +47,7 @@ const PayFastPayment: React.FC<PayFastPaymentProps> = ({
     }
   };
 
-  const initiatePayFastPayment = async () => {
+  const generatePayFastForm = async () => {
     if (!user) {
       toast({
         title: "Authentication required",
@@ -60,7 +61,7 @@ const PayFastPayment: React.FC<PayFastPaymentProps> = ({
     setError(null);
 
     try {
-      console.log('Initiating PayFast redirect payment for order:', orderId);
+      console.log('Generating PayFast form data for order:', orderId);
       
       const { data, error } = await supabase.functions.invoke('payfast-payment', {
         body: {
@@ -74,45 +75,67 @@ const PayFastPayment: React.FC<PayFastPaymentProps> = ({
 
       if (error) {
         console.error('PayFast payment function error:', error);
-        const errorMessage = error.message || 'Failed to initialize payment. Please try again or choose a different payment method.';
-        await updateOrderToFailed(`PayFast initialization failed: ${errorMessage}`);
+        const errorMessage = error.message || 'Failed to generate payment form. Please try again.';
+        await updateOrderToFailed(`PayFast form generation failed: ${errorMessage}`);
         throw new Error(errorMessage);
       }
 
-      console.log('PayFast payment response:', data);
+      console.log('PayFast form data generated:', data);
 
-      if (data.success && data.redirectUrl) {
-        // Show success message before redirect
+      if (data.success && data.formData) {
+        setPaymentData(data.formData);
+        
         toast({
-          title: "Redirecting to PayFast",
-          description: "You'll be redirected to PayFast to complete your payment.",
+          title: "Payment form ready",
+          description: "Click 'Submit Payment' to proceed to PayFast.",
         });
-
-        // Call the payment initiated callback
-        onPaymentInitiated();
-
-        // Small delay to ensure toast shows, then redirect
-        setTimeout(() => {
-          window.location.href = data.redirectUrl;
-        }, 1000);
-
       } else {
-        const errorMessage = data?.error || 'Failed to initialize PayFast payment';
-        await updateOrderToFailed(`PayFast initialization failed: ${errorMessage}`);
+        const errorMessage = data?.error || 'Failed to generate PayFast payment form';
+        await updateOrderToFailed(`PayFast form generation failed: ${errorMessage}`);
         throw new Error(errorMessage);
       }
     } catch (error) {
       console.error('PayFast payment error:', error);
-      const errorMessage = error instanceof Error ? error.message : 'Failed to initiate payment. Please try again or choose a different payment method.';
+      const errorMessage = error instanceof Error ? error.message : 'Failed to generate payment form. Please try again.';
       setError(errorMessage);
       toast({
         title: "Payment error",
         description: errorMessage,
         variant: "destructive",
       });
+    } finally {
       setIsProcessing(false);
     }
   };
+
+  const submitPayFastForm = () => {
+    if (!paymentData) return;
+
+    // Call the payment initiated callback
+    onPaymentInitiated();
+
+    // Create and submit the form
+    const form = document.createElement('form');
+    form.method = 'POST';
+    form.action = 'https://sandbox.payfast.co.za/eng/process';
+
+    // Add all form fields
+    Object.entries(paymentData).forEach(([key, value]) => {
+      const input = document.createElement('input');
+      input.type = 'hidden';
+      input.name = key;
+      input.value = String(value);
+      form.appendChild(input);
+    });
+
+    document.body.appendChild(form);
+    form.submit();
+  };
+
+  useEffect(() => {
+    // Auto-generate form data when component mounts
+    generatePayFastForm();
+  }, []);
 
   return (
     <div className="bg-onolo-dark-lighter rounded-xl p-6">
@@ -149,7 +172,7 @@ const PayFastPayment: React.FC<PayFastPaymentProps> = ({
         <div className="flex items-start space-x-2 mb-3">
           <Info className="w-5 h-5 text-blue-400 mt-0.5" />
           <div>
-            <h4 className="text-blue-400 font-semibold text-sm mb-1">PayFast Redirect Payment</h4>
+            <h4 className="text-blue-400 font-semibold text-sm mb-1">PayFast Secure Payment</h4>
             <p className="text-sm text-onolo-gray mb-2">
               You'll be redirected to PayFast's secure payment page to complete your transaction.
             </p>
@@ -157,31 +180,36 @@ const PayFastPayment: React.FC<PayFastPaymentProps> = ({
         </div>
         <div className="space-y-1 text-xs text-onolo-gray ml-7">
           <p>• Supports EFT, credit cards, and instant payments</p>
-          <p>• Secure encryption and fraud protection</p>
-          <p>• Redirects to PayFast's secure payment portal</p>
+          <p>• Bank-level security and fraud protection</p>
+          <p>• Secure form submission to PayFast servers</p>
           <p>• Returns to our site after payment completion</p>
         </div>
         <div className="mt-3 p-3 bg-yellow-500 bg-opacity-10 rounded-lg ml-7">
           <p className="text-xs text-yellow-400">
-            <strong>Test Mode:</strong> Using verified PayFast sandbox credentials.
+            <strong>Test Mode:</strong> Using PayFast sandbox environment.
           </p>
         </div>
       </div>
 
       <Button
-        onClick={initiatePayFastPayment}
+        onClick={paymentData ? submitPayFastForm : generatePayFastForm}
         disabled={isProcessing}
         className="w-full bg-onolo-orange hover:bg-onolo-orange-dark text-white font-semibold py-3"
       >
         {isProcessing ? (
           <>
             <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-            Redirecting to PayFast...
+            Preparing Payment...
+          </>
+        ) : paymentData ? (
+          <>
+            <CreditCard className="w-4 h-4 mr-2" />
+            Submit Payment
           </>
         ) : (
           <>
-            <ExternalLink className="w-4 h-4 mr-2" />
-            Pay with PayFast
+            <CreditCard className="w-4 h-4 mr-2" />
+            Generate Payment Form
           </>
         )}
       </Button>

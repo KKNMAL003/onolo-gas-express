@@ -12,7 +12,7 @@ const logStep = (step: string, details?: any) => {
   console.log(`[PAYFAST-PAYMENT] ${step}${detailsStr}`);
 };
 
-// Simple MD5 implementation for Deno
+// MD5 hash function for Deno
 const md5 = async (text: string): Promise<string> => {
   const encoder = new TextEncoder();
   const data = encoder.encode(text);
@@ -33,7 +33,7 @@ serve(async (req) => {
   );
 
   try {
-    logStep("PayFast redirect payment function started");
+    logStep("PayFast form generation started");
 
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) throw new Error("No authorization header provided");
@@ -45,7 +45,7 @@ serve(async (req) => {
     if (!user?.email) throw new Error("User not authenticated");
 
     const { orderId, amount, customerName, customerEmail, deliveryAddress } = await req.json();
-    logStep("Payment request received", { orderId, amount, customerEmail });
+    logStep("Payment form request received", { orderId, amount, customerEmail });
 
     // PayFast sandbox credentials
     const merchantId = "10004002";
@@ -55,57 +55,72 @@ serve(async (req) => {
     // Get the origin for return URLs
     const origin = req.headers.get("origin") || "http://localhost:3000";
 
-    // Create PayFast payment data
-    const paymentData = {
+    // Split customer name into first and last
+    const nameParts = customerName.trim().split(' ');
+    const firstName = nameParts[0] || customerName;
+    const lastName = nameParts.slice(1).join(' ') || '';
+
+    // Create PayFast form data according to their documentation
+    const formData = {
+      // Merchant details
       merchant_id: merchantId,
       merchant_key: merchantKey,
       return_url: `${origin}/payment-success?m_payment_id=${orderId}&payment_source=payfast`,
       cancel_url: `${origin}/payment-cancelled?m_payment_id=${orderId}&payment_source=payfast`,
       notify_url: `${Deno.env.get("SUPABASE_URL")}/functions/v1/payfast-notify`,
-      name_first: customerName.split(' ')[0] || customerName,
-      name_last: customerName.split(' ').slice(1).join(' ') || '',
+      
+      // Customer details
+      name_first: firstName,
+      name_last: lastName,
       email_address: customerEmail,
+      
+      // Transaction details
       m_payment_id: orderId,
       amount: amount.toFixed(2),
       item_name: "Onolo Group Gas Delivery",
-      item_description: `Gas delivery order #${orderId.slice(0, 8)}`,
+      item_description: `Gas delivery order #${orderId.slice(0, 8)} to ${deliveryAddress.slice(0, 50)}`,
+      
+      // Transaction options
       email_confirmation: "1",
       confirmation_address: customerEmail
     };
 
-    // Generate signature
+    // Generate signature according to PayFast documentation
     const generateSignature = async (data: any, passphrase?: string) => {
-      const sortedKeys = Object.keys(data).sort();
-      const queryString = sortedKeys
-        .filter(key => key !== 'signature' && data[key] !== '' && data[key] !== null && data[key] !== undefined)
-        .map(key => `${key}=${encodeURIComponent(data[key])}`)
-        .join('&');
+      // Create parameter string in the exact order fields appear in form
+      const orderedKeys = [
+        'merchant_id', 'merchant_key', 'return_url', 'cancel_url', 'notify_url',
+        'name_first', 'name_last', 'email_address',
+        'm_payment_id', 'amount', 'item_name', 'item_description',
+        'email_confirmation', 'confirmation_address'
+      ];
       
-      const stringToSign = passphrase ? `${queryString}&passphrase=${passphrase}` : queryString;
-      logStep("PayFast signature string", { stringToSign: stringToSign.substring(0, 200) + '...' });
+      let paramString = '';
+      orderedKeys.forEach(key => {
+        if (data[key] && data[key] !== '') {
+          paramString += `${key}=${encodeURIComponent(data[key])}&`;
+        }
+      });
       
-      return await md5(stringToSign);
+      // Remove last ampersand
+      paramString = paramString.slice(0, -1);
+      
+      // Add passphrase if provided
+      if (passphrase) {
+        paramString += `&passphrase=${encodeURIComponent(passphrase)}`;
+      }
+      
+      logStep("Signature generation string", { 
+        paramString: paramString.substring(0, 200) + '...',
+        fullLength: paramString.length
+      });
+      
+      return await md5(paramString);
     };
 
-    paymentData.signature = await generateSignature(paymentData, passphrase);
-    logStep("Signature generated", { signature: paymentData.signature });
-
-    // Create redirect URL for PayFast
-    const payfastUrl = "https://sandbox.payfast.co.za/eng/process";
-    const queryParams = new URLSearchParams();
-    
-    Object.entries(paymentData).forEach(([key, value]) => {
-      if (value !== '') {
-        queryParams.append(key, String(value));
-      }
-    });
-
-    const redirectUrl = `${payfastUrl}?${queryParams.toString()}`;
-    
-    logStep("PayFast redirect URL generated", { 
-      url: redirectUrl.substring(0, 200) + '...',
-      paymentId: orderId
-    });
+    // Generate and add signature
+    formData.signature = await generateSignature(formData, passphrase);
+    logStep("Signature generated", { signature: formData.signature });
 
     // Update order status to pending payment
     const { error: updateError } = await supabaseClient
@@ -123,11 +138,16 @@ serve(async (req) => {
     }
 
     logStep("Order updated to pending payment", { orderId });
+    logStep("PayFast form data generated successfully", { 
+      paymentId: orderId,
+      amount: formData.amount,
+      itemName: formData.item_name
+    });
 
     return new Response(JSON.stringify({ 
       success: true,
-      redirectUrl: redirectUrl,
-      message: "PayFast payment redirect URL generated successfully"
+      formData: formData,
+      message: "PayFast payment form generated successfully"
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
@@ -135,7 +155,7 @@ serve(async (req) => {
 
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
-    logStep("ERROR in PayFast payment", { message: errorMessage });
+    logStep("ERROR in PayFast payment form generation", { message: errorMessage });
     return new Response(JSON.stringify({ 
       success: false,
       error: errorMessage 
