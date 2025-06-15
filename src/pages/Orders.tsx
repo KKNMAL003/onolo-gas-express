@@ -1,9 +1,11 @@
+
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import OrderCard from '@/components/OrderCard';
+import { sendStatusUpdateEmail, sendInvoiceEmail } from '@/utils/emailUtils';
 
 interface Order {
   id: string;
@@ -17,6 +19,10 @@ interface Order {
   estimated_delivery_end: string | null;
   delivery_date: string | null;
   preferred_delivery_window: string | null;
+  customer_name: string;
+  customer_email: string;
+  payment_confirmation_sent: boolean | null;
+  receipt_sent: boolean | null;
   order_items: {
     product_name: string;
     quantity: number;
@@ -107,6 +113,32 @@ const Orders = () => {
     fetchOrders(); // Refresh orders to show updated delivery schedule
   };
 
+  const handleResendEmail = async (order: Order, type: 'status' | 'invoice') => {
+    try {
+      let result;
+      if (type === 'status') {
+        result = await sendStatusUpdateEmail(order.id, order.customer_email, order.customer_name);
+      } else {
+        result = await sendInvoiceEmail(order.id, order.customer_email, order.customer_name);
+      }
+
+      if (result.success) {
+        toast({
+          title: "Email sent",
+          description: `${type === 'status' ? 'Status update' : 'Invoice'} email has been sent successfully.`,
+        });
+      } else {
+        throw new Error('Failed to send email');
+      }
+    } catch (error) {
+      toast({
+        title: "Error sending email",
+        description: `Failed to send ${type} email. Please try again.`,
+        variant: "destructive",
+      });
+    }
+  };
+
   if (!user) {
     return (
       <div className="min-h-screen bg-onolo-dark text-white p-6 flex items-center justify-center">
@@ -149,14 +181,48 @@ const Orders = () => {
         ) : (
           <div className="space-y-6">
             {orders.map((order) => (
-              <OrderCard
-                key={order.id}
-                order={order}
-                isExpanded={expandedOrder === order.id}
-                onToggleExpansion={toggleOrderExpansion}
-                onCancelOrder={cancelOrder}
-                onRescheduleSuccess={handleRescheduleSuccess}
-              />
+              <div key={order.id}>
+                <OrderCard
+                  order={order}
+                  isExpanded={expandedOrder === order.id}
+                  onToggleExpansion={toggleOrderExpansion}
+                  onCancelOrder={cancelOrder}
+                  onRescheduleSuccess={handleRescheduleSuccess}
+                />
+                
+                {/* Email Actions */}
+                {expandedOrder === order.id && (
+                  <div className="mt-4 p-4 bg-onolo-dark-lighter rounded-lg border-t border-onolo-gray">
+                    <h4 className="text-sm font-semibold mb-3 text-onolo-gray">Email Actions</h4>
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleResendEmail(order, 'status')}
+                        className="text-xs"
+                      >
+                        Resend Status Email
+                      </Button>
+                      
+                      {order.status === 'delivered' && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleResendEmail(order, 'invoice')}
+                          className="text-xs"
+                        >
+                          Resend Invoice
+                        </Button>
+                      )}
+                    </div>
+                    
+                    <div className="mt-2 text-xs text-onolo-gray">
+                      <p>Confirmation sent: {order.payment_confirmation_sent ? '✓' : '✗'}</p>
+                      <p>Invoice sent: {order.receipt_sent ? '✓' : '✗'}</p>
+                    </div>
+                  </div>
+                )}
+              </div>
             ))}
           </div>
         )}

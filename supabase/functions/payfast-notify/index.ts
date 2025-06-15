@@ -29,6 +29,17 @@ serve(async (req) => {
     const { m_payment_id, payment_status, pf_payment_id, amount_gross } = paymentData;
 
     if (payment_status === "COMPLETE") {
+      // Get order details first
+      const { data: order, error: orderError } = await supabaseClient
+        .from('orders')
+        .select('customer_email, customer_name')
+        .eq('id', m_payment_id)
+        .single();
+
+      if (orderError) {
+        logStep("Error fetching order details", orderError);
+      }
+
       // Update order status to order_received
       await supabaseClient
         .from('orders')
@@ -42,9 +53,25 @@ serve(async (req) => {
 
       logStep("Order status updated to order_received", { orderId: m_payment_id });
 
-      // Here you would typically send confirmation email/SMS
-      // For now, we'll just log it
-      logStep("Payment confirmation should be sent", { 
+      // Send confirmation email if order details are available
+      if (order) {
+        try {
+          const emailResponse = await supabaseClient.functions.invoke('send-order-email', {
+            body: {
+              orderId: m_payment_id,
+              type: 'confirmation',
+              customerEmail: order.customer_email,
+              customerName: order.customer_name
+            }
+          });
+
+          logStep("Confirmation email sent", { emailResponse });
+        } catch (emailError) {
+          logStep("Error sending confirmation email", emailError);
+        }
+      }
+
+      logStep("Payment confirmation completed", { 
         orderId: m_payment_id, 
         paymentId: pf_payment_id,
         amount: amount_gross 

@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -75,6 +74,29 @@ const Checkout = () => {
     setDeliverySlot(slot);
   };
 
+  const sendOrderConfirmationEmail = async (orderId: string) => {
+    try {
+      console.log('Sending order confirmation email for order:', orderId);
+      
+      const { data, error } = await supabase.functions.invoke('send-order-email', {
+        body: {
+          orderId,
+          type: 'confirmation',
+          customerEmail: formData.email,
+          customerName: formData.name
+        }
+      });
+
+      if (error) {
+        console.error('Error sending confirmation email:', error);
+      } else {
+        console.log('Confirmation email sent successfully:', data);
+      }
+    } catch (error) {
+      console.error('Failed to send confirmation email:', error);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
@@ -135,7 +157,7 @@ const Checkout = () => {
           delivery_latitude: locationData.latitude,
           delivery_longitude: locationData.longitude,
           delivery_cost: deliveryCost,
-          service_area_validated: true, // Always true since we removed validation
+          service_area_validated: true,
           auto_status_enabled: true
         })
         .select()
@@ -158,6 +180,9 @@ const Checkout = () => {
 
       if (itemsError) throw itemsError;
 
+      // Send order confirmation email
+      await sendOrderConfirmationEmail(order.id);
+
       // Handle payment method
       if (formData.paymentMethod === 'payfast') {
         setOrderData({
@@ -175,7 +200,7 @@ const Checkout = () => {
       
       toast({
         title: "Order placed successfully!",
-        description: `Order #${order.id.slice(0, 8)} has been submitted.`,
+        description: `Order #${order.id.slice(0, 8)} has been submitted. Check your email for confirmation.`,
       });
 
       navigate('/orders');
@@ -195,7 +220,7 @@ const Checkout = () => {
     clearCart();
     toast({
       title: "Payment initiated",
-      description: "Complete your payment to confirm the order.",
+      description: "Complete your payment to confirm the order. You'll receive email confirmation once payment is successful.",
     });
     navigate('/orders');
   };
