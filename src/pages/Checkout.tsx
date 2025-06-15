@@ -76,7 +76,7 @@ const Checkout = () => {
 
   const sendOrderConfirmationEmail = async (orderId: string) => {
     try {
-      console.log('Sending order confirmation email for order:', orderId);
+      console.log('Attempting to send order confirmation email for order:', orderId);
       
       const { data, error } = await supabase.functions.invoke('send-order-email', {
         body: {
@@ -89,11 +89,25 @@ const Checkout = () => {
 
       if (error) {
         console.error('Error sending confirmation email:', error);
+        toast({
+          title: "Email notification failed",
+          description: "Order was placed successfully, but we couldn't send the confirmation email. You can resend it from your orders page.",
+          variant: "destructive",
+        });
       } else {
         console.log('Confirmation email sent successfully:', data);
+        toast({
+          title: "Email sent!",
+          description: "Order confirmation email has been sent to your email address.",
+        });
       }
     } catch (error) {
       console.error('Failed to send confirmation email:', error);
+      toast({
+        title: "Email notification failed",
+        description: "Order was placed successfully, but we couldn't send the confirmation email. You can resend it from your orders page.",
+        variant: "destructive",
+      });
     }
   };
 
@@ -141,6 +155,8 @@ const Checkout = () => {
     setIsLoading(true);
 
     try {
+      console.log('Creating order with payment method:', formData.paymentMethod);
+      
       const { data: order, error: orderError } = await supabase
         .from('orders')
         .insert({
@@ -163,7 +179,12 @@ const Checkout = () => {
         .select()
         .single();
 
-      if (orderError) throw orderError;
+      if (orderError) {
+        console.error('Order creation error:', orderError);
+        throw orderError;
+      }
+
+      console.log('Order created successfully:', order.id);
 
       const orderItems = cartItems.map(item => ({
         order_id: order.id,
@@ -178,10 +199,18 @@ const Checkout = () => {
         .from('order_items')
         .insert(orderItems);
 
-      if (itemsError) throw itemsError;
+      if (itemsError) {
+        console.error('Order items creation error:', itemsError);
+        throw itemsError;
+      }
 
-      // Send order confirmation email
-      await sendOrderConfirmationEmail(order.id);
+      console.log('Order items created successfully');
+
+      // Send order confirmation email for all payment methods except PayFast
+      // (PayFast will send its own confirmation after payment)
+      if (formData.paymentMethod !== 'payfast') {
+        await sendOrderConfirmationEmail(order.id);
+      }
 
       // Handle payment method
       if (formData.paymentMethod === 'payfast') {

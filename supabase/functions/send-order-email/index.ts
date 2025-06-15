@@ -42,6 +42,16 @@ serve(async (req) => {
     
     logStep("Processing email request", { orderId, type, customerEmail });
 
+    // Validate required fields
+    if (!orderId || !type || !customerEmail || !customerName) {
+      throw new Error("Missing required fields: orderId, type, customerEmail, customerName");
+    }
+
+    // Validate email type
+    if (!['confirmation', 'status_update', 'invoice'].includes(type)) {
+      throw new Error(`Invalid email type: ${type}`);
+    }
+
     // Fetch order details
     const { data: order, error: orderError } = await supabaseClient
       .from('orders')
@@ -58,8 +68,11 @@ serve(async (req) => {
       .single();
 
     if (orderError || !order) {
-      throw new Error(`Order not found: ${orderError?.message}`);
+      logStep("Order fetch error", { orderError, orderId });
+      throw new Error(`Order not found: ${orderError?.message || 'Unknown error'}`);
     }
+
+    logStep("Order data retrieved", { orderId: order.id, status: order.status, itemCount: order.order_items?.length });
 
     let subject = "";
     let htmlContent = "";
@@ -81,6 +94,13 @@ serve(async (req) => {
         throw new Error(`Unknown email type: ${type}`);
     }
 
+    logStep("Email content generated", { subject, contentLength: htmlContent.length });
+
+    // Validate Resend API key
+    if (!Deno.env.get("RESEND_API_KEY")) {
+      throw new Error("RESEND_API_KEY environment variable is not set");
+    }
+
     const emailResponse = await resend.emails.send({
       from: "Onolo Group <orders@onologroup.com>",
       to: [customerEmail],
@@ -88,7 +108,7 @@ serve(async (req) => {
       html: htmlContent,
     });
 
-    logStep("Email sent successfully", { emailId: emailResponse.data?.id });
+    logStep("Email sent successfully", { emailId: emailResponse.data?.id, to: customerEmail });
 
     // Update order with email sent status
     const updateData: any = {};
@@ -99,10 +119,16 @@ serve(async (req) => {
     }
 
     if (Object.keys(updateData).length > 0) {
-      await supabaseClient
+      const { error: updateError } = await supabaseClient
         .from('orders')
         .update(updateData)
         .eq('id', orderId);
+      
+      if (updateError) {
+        logStep("Warning: Failed to update order email status", updateError);
+      } else {
+        logStep("Order email status updated", updateData);
+      }
     }
 
     return new Response(
@@ -115,7 +141,7 @@ serve(async (req) => {
 
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
-    logStep("ERROR in send-order-email", { message: errorMessage });
+    logStep("ERROR in send-order-email", { message: errorMessage, stack: error instanceof Error ? error.stack : undefined });
     
     return new Response(
       JSON.stringify({ success: false, error: errorMessage }),
@@ -128,14 +154,14 @@ serve(async (req) => {
 });
 
 function generateConfirmationEmail(order: any, customerName: string): string {
-  const orderItems = order.order_items.map((item: any) => `
+  const orderItems = order.order_items?.map((item: any) => `
     <tr>
       <td style="padding: 8px; border-bottom: 1px solid #eee;">${item.product_name}</td>
       <td style="padding: 8px; border-bottom: 1px solid #eee; text-align: center;">${item.quantity}</td>
       <td style="padding: 8px; border-bottom: 1px solid #eee; text-align: right;">R ${item.unit_price.toFixed(2)}</td>
       <td style="padding: 8px; border-bottom: 1px solid #eee; text-align: right;">R ${item.total_price.toFixed(2)}</td>
     </tr>
-  `).join('');
+  `).join('') || '<tr><td colspan="4" style="padding: 8px;">No items found</td></tr>';
 
   return `
     <!DOCTYPE html>
@@ -260,14 +286,14 @@ function generateStatusUpdateEmail(order: any, customerName: string): string {
 }
 
 function generateInvoiceEmail(order: any, customerName: string): string {
-  const orderItems = order.order_items.map((item: any) => `
+  const orderItems = order.order_items?.map((item: any) => `
     <tr>
       <td style="padding: 8px; border-bottom: 1px solid #eee;">${item.product_name}</td>
       <td style="padding: 8px; border-bottom: 1px solid #eee; text-align: center;">${item.quantity}</td>
       <td style="padding: 8px; border-bottom: 1px solid #eee; text-align: right;">R ${item.unit_price.toFixed(2)}</td>
       <td style="padding: 8px; border-bottom: 1px solid #eee; text-align: right;">R ${item.total_price.toFixed(2)}</td>
     </tr>
-  `).join('');
+  `).join('') || '<tr><td colspan="4" style="padding: 8px;">No items found</td></tr>';
 
   return `
     <!DOCTYPE html>

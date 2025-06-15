@@ -40,6 +40,8 @@ const PayFastPayment: React.FC<PayFastPaymentProps> = ({
     setIsProcessing(true);
 
     try {
+      console.log('Initiating PayFast payment for order:', orderId);
+      
       const { data, error } = await supabase.functions.invoke('payfast-payment', {
         body: {
           orderId,
@@ -50,7 +52,12 @@ const PayFastPayment: React.FC<PayFastPaymentProps> = ({
         }
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error('PayFast payment function error:', error);
+        throw error;
+      }
+
+      console.log('PayFast payment response:', data);
 
       if (data.success) {
         // Create PayFast form and submit it
@@ -79,13 +86,13 @@ const PayFastPayment: React.FC<PayFastPaymentProps> = ({
           description: "You've been redirected to PayFast to complete your payment.",
         });
       } else {
-        throw new Error('Failed to initialize payment');
+        throw new Error(data.message || 'Failed to initialize payment');
       }
     } catch (error) {
       console.error('PayFast payment error:', error);
       toast({
         title: "Payment error",
-        description: "Failed to initiate payment. Please try again.",
+        description: "Failed to initiate payment. Please try again or choose a different payment method.",
         variant: "destructive",
       });
     } finally {
@@ -119,8 +126,11 @@ const PayFastPayment: React.FC<PayFastPaymentProps> = ({
         <p className="text-sm text-onolo-gray mb-2">
           You'll be redirected to PayFast to complete your payment securely.
         </p>
-        <p className="text-xs text-onolo-gray">
+        <p className="text-xs text-onolo-gray mb-2">
           PayFast supports all major South African banks and payment methods including EFT, credit cards, and instant payments.
+        </p>
+        <p className="text-xs text-yellow-400">
+          <strong>Note:</strong> Currently in test mode. Use PayFast's test payment methods.
         </p>
       </div>
 
