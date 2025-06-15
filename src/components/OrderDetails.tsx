@@ -11,6 +11,8 @@ interface Order {
   priority_level: string | null;
   estimated_delivery_start: string | null;
   estimated_delivery_end: string | null;
+  delivery_date: string | null;
+  preferred_delivery_window: string | null;
   order_items: {
     product_name: string;
     quantity: number;
@@ -70,6 +72,14 @@ const OrderDetails: React.FC<OrderDetailsProps> = ({ order }) => {
             {new Date(order.created_at).toLocaleDateString()}
           </span>
         </div>
+        {order.delivery_date && order.preferred_delivery_window && (
+          <div className="flex justify-between">
+            <span className="text-onolo-gray">Scheduled Delivery:</span>
+            <span className="text-white text-xs">
+              {new Date(order.delivery_date).toLocaleDateString()} - {order.preferred_delivery_window}
+            </span>
+          </div>
+        )}
         {order.estimated_delivery_start && order.estimated_delivery_end && (
           <div className="flex justify-between">
             <span className="text-onolo-gray">Estimated Delivery:</span>

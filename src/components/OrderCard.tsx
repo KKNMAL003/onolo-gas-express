@@ -1,4 +1,3 @@
-
 import React from 'react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -16,6 +15,8 @@ interface Order {
   priority_level: string | null;
   estimated_delivery_start: string | null;
   estimated_delivery_end: string | null;
+  delivery_date: string | null;
+  preferred_delivery_window: string | null;
   order_items: {
     product_name: string;
     quantity: number;
