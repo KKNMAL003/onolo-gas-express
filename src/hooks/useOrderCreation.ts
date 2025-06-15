@@ -88,6 +88,7 @@ export const useOrderCreation = () => {
     try {
       console.log('Creating order with payment method:', formData.paymentMethod);
       
+      // Use 'Pending' with capital P to match the database default
       const { data: order, error: orderError } = await supabase
         .from('orders')
         .insert({
@@ -98,7 +99,7 @@ export const useOrderCreation = () => {
           payment_method: formData.paymentMethod,
           customer_name: formData.name,
           customer_email: formData.email,
-          status: 'order_received',
+          status: 'Pending',
           preferred_delivery_window: deliverySlot.timeWindow,
           delivery_date: deliverySlot.date,
           delivery_latitude: locationData.latitude,
