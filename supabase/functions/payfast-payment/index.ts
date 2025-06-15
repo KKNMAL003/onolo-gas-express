@@ -33,7 +33,7 @@ serve(async (req) => {
   );
 
   try {
-    logStep("PayFast Onsite payment function started");
+    logStep("PayFast redirect payment function started");
 
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) throw new Error("No authorization header provided");
@@ -47,7 +47,7 @@ serve(async (req) => {
     const { orderId, amount, customerName, customerEmail, deliveryAddress } = await req.json();
     logStep("Payment request received", { orderId, amount, customerEmail });
 
-    // PayFast sandbox credentials - verified sandbox values
+    // PayFast sandbox credentials
     const merchantId = "10004002";
     const merchantKey = "q1cd2rdny4a53";
     const passphrase = "payfast";
@@ -90,50 +90,22 @@ serve(async (req) => {
     paymentData.signature = await generateSignature(paymentData, passphrase);
     logStep("Signature generated", { signature: paymentData.signature });
 
-    // Convert data to form string for PayFast API
-    const formData = new URLSearchParams();
+    // Create redirect URL for PayFast
+    const payfastUrl = "https://sandbox.payfast.co.za/eng/process";
+    const queryParams = new URLSearchParams();
+    
     Object.entries(paymentData).forEach(([key, value]) => {
       if (value !== '') {
-        formData.append(key, String(value));
+        queryParams.append(key, String(value));
       }
     });
 
-    logStep("Calling PayFast Onsite API");
-
-    // Call PayFast Onsite API
-    const payfastUrl = "https://sandbox.payfast.co.za/onsite/process";
+    const redirectUrl = `${payfastUrl}?${queryParams.toString()}`;
     
-    const payfastResponse = await fetch(payfastUrl, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-      },
-      body: formData.toString()
+    logStep("PayFast redirect URL generated", { 
+      url: redirectUrl.substring(0, 200) + '...',
+      paymentId: orderId
     });
-
-    const responseText = await payfastResponse.text();
-    logStep("PayFast API response", { 
-      status: payfastResponse.status, 
-      statusText: payfastResponse.statusText,
-      response: responseText.substring(0, 500)
-    });
-
-    if (!payfastResponse.ok) {
-      throw new Error(`PayFast API error: ${payfastResponse.status} ${payfastResponse.statusText} - ${responseText}`);
-    }
-
-    let payfastResult;
-    try {
-      payfastResult = JSON.parse(responseText);
-    } catch (e) {
-      throw new Error(`Invalid JSON response from PayFast: ${responseText}`);
-    }
-
-    logStep("PayFast Onsite response parsed", payfastResult);
-
-    if (!payfastResult.uuid) {
-      throw new Error(`Failed to get PayFast payment UUID: ${JSON.stringify(payfastResult)}`);
-    }
 
     // Update order status to pending payment
     const { error: updateError } = await supabaseClient
@@ -152,13 +124,10 @@ serve(async (req) => {
 
     logStep("Order updated to pending payment", { orderId });
 
-    // Return UUID for frontend to use with PayFast Onsite modal
     return new Response(JSON.stringify({ 
       success: true,
-      uuid: payfastResult.uuid,
-      returnUrl: `${origin}/payment-success?m_payment_id=${orderId}&payment_source=payfast`,
-      cancelUrl: `${origin}/payment-cancelled?m_payment_id=${orderId}&payment_source=payfast`,
-      message: "PayFast payment UUID generated successfully"
+      redirectUrl: redirectUrl,
+      message: "PayFast payment redirect URL generated successfully"
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
