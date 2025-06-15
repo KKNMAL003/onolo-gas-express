@@ -241,9 +241,9 @@ serve(async (req) => {
       results.push({ type: 'customer', success: false, error: error.message });
     }
 
-    // Send email to company
+    // Send email to your verified business email
     try {
-      logStep("Sending company email", { to: 'info@onologroup.com' });
+      logStep("Sending company email", { to: 'info19music@gmail.com' });
       
       const companyEmailResponse = await fetch('https://api.resend.com/emails', {
         method: 'POST',
@@ -253,7 +253,7 @@ serve(async (req) => {
         },
         body: JSON.stringify({
           from: 'Onolo Group Orders <info19music@gmail.com>',
-          to: ['info@onologroup.com'],
+          to: ['info19music@gmail.com'],
           subject: `New Order #${shortOrderId} from ${order.customer_name}`,
           html: companyEmailHtml,
         }),
