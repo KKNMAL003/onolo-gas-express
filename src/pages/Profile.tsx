@@ -1,5 +1,5 @@
-
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
@@ -7,9 +7,10 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import DeliveryPreferences from '@/components/DeliveryPreferences';
-import { User, Save } from 'lucide-react';
+import { User, Save, X } from 'lucide-react';
 
 const Profile = () => {
+  const navigate = useNavigate();
   const { user, profile, refreshProfile } = useAuth();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
@@ -19,6 +20,10 @@ const Profile = () => {
     phone: profile?.phone || '',
     address: profile?.address || ''
   });
+
+  const handleClose = () => {
+    navigate('/');
+  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     setFormData({
@@ -79,7 +84,17 @@ const Profile = () => {
   return (
     <div className="min-h-screen bg-onolo-dark text-white p-6">
       <div className="max-w-md mx-auto space-y-6">
-        <h1 className="text-2xl font-bold mb-8">My Profile</h1>
+        <div className="flex items-center justify-between mb-8">
+          <h1 className="text-2xl font-bold">My Profile</h1>
+          <Button
+            onClick={handleClose}
+            variant="ghost"
+            size="sm"
+            className="text-onolo-gray hover:text-white p-2"
+          >
+            <X className="w-5 h-5" />
+          </Button>
+        </div>
 
         {/* Personal Information */}
         <div className="bg-onolo-dark-lighter rounded-2xl p-6">
