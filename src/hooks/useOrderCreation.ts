@@ -98,7 +98,7 @@ export const useOrderCreation = () => {
           payment_method: formData.paymentMethod,
           customer_name: formData.name,
           customer_email: formData.email,
-          status: 'pending',
+          status: 'order_received',
           preferred_delivery_window: deliverySlot.timeWindow,
           delivery_date: deliverySlot.date,
           delivery_latitude: locationData.latitude,
