@@ -1,16 +1,12 @@
+
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCart } from '@/contexts/CartContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import LocationPicker from '@/components/LocationPicker';
-import DeliverySlotPicker from '@/components/DeliverySlotPicker';
+import CheckoutForm from '@/components/checkout/CheckoutForm';
 import PayFastPayment from '@/components/PayFastPayment';
-import { CreditCard } from 'lucide-react';
 
 const Checkout = () => {
   const navigate = useNavigate();
@@ -284,195 +280,20 @@ const Checkout = () => {
       <div className="max-w-md mx-auto">
         <h1 className="text-2xl font-bold mb-8">Checkout</h1>
 
-        <form onSubmit={handleSubmit} className="space-y-6">
-          {/* Customer Information */}
-          <div className="bg-onolo-dark-lighter rounded-2xl p-6">
-            <h2 className="text-lg font-semibold mb-4">Customer Information</h2>
-            
-            <div className="space-y-4">
-              <div>
-                <Label htmlFor="name">Full Name</Label>
-                <Input
-                  type="text"
-                  name="name"
-                  value={formData.name}
-                  onChange={handleChange}
-                  className="w-full p-3 bg-onolo-dark border border-onolo-gray rounded-xl text-white mt-2"
-                  required
-                />
-              </div>
-              
-              <div>
-                <Label htmlFor="email">Email</Label>
-                <Input
-                  type="email"
-                  name="email"
-                  value={formData.email}
-                  onChange={handleChange}
-                  className="w-full p-3 bg-onolo-dark border border-onolo-gray rounded-xl text-white mt-2"
-                  required
-                />
-              </div>
-              
-              <div>
-                <Label htmlFor="phone">Phone</Label>
-                <Input
-                  type="tel"
-                  name="phone"
-                  value={formData.phone}
-                  onChange={handleChange}
-                  className="w-full p-3 bg-onolo-dark border border-onolo-gray rounded-xl text-white mt-2"
-                  required
-                />
-              </div>
-            </div>
-          </div>
-
-          {/* Location & Delivery */}
-          <div className="bg-onolo-dark-lighter rounded-2xl p-6">
-            <h2 className="text-lg font-semibold mb-4">Delivery Location</h2>
-            <LocationPicker
-              onLocationSelect={handleLocationSelect}
-              initialAddress={formData.address}
-            />
-          </div>
-
-          {/* Delivery Schedule */}
-          {locationData && (
-            <div className="bg-onolo-dark-lighter rounded-2xl p-6">
-              <DeliverySlotPicker onSlotSelect={handleSlotSelect} />
-            </div>
-          )}
-
-          {/* Payment Method */}
-          <div className="bg-onolo-dark-lighter rounded-2xl p-6">
-            <h2 className="text-lg font-semibold mb-4">Payment Method</h2>
-            
-            <div className="space-y-3">
-              <label className="flex items-center space-x-3">
-                <input
-                  type="radio"
-                  name="paymentMethod"
-                  value="eft"
-                  checked={formData.paymentMethod === 'eft'}
-                  onChange={handleChange}
-                  className="text-onolo-orange"
-                />
-                <span>EFT (Electronic Funds Transfer)</span>
-              </label>
-              
-              <label className="flex items-center space-x-3">
-                <input
-                  type="radio"
-                  name="paymentMethod"
-                  value="card"
-                  checked={formData.paymentMethod === 'card'}
-                  onChange={handleChange}
-                  className="text-onolo-orange"
-                />
-                <span>Credit/Debit Card</span>
-              </label>
-
-              <label className="flex items-center space-x-3">
-                <input
-                  type="radio"
-                  name="paymentMethod"
-                  value="payfast"
-                  checked={formData.paymentMethod === 'payfast'}
-                  onChange={handleChange}
-                  className="text-onolo-orange"
-                />
-                <div className="flex items-center">
-                  <CreditCard className="w-4 h-4 mr-2" />
-                  <span>PayFast (Instant Payment)</span>
-                </div>
-              </label>
-
-              <label className="flex items-center space-x-3">
-                <input
-                  type="radio"
-                  name="paymentMethod"
-                  value="cash_on_delivery"
-                  checked={formData.paymentMethod === 'cash_on_delivery'}
-                  onChange={handleChange}
-                  className="text-onolo-orange"
-                />
-                <span>Cash on Delivery</span>
-              </label>
-            </div>
-
-            {formData.paymentMethod === 'eft' && (
-              <div className="mt-4 p-4 bg-onolo-dark rounded-xl border border-onolo-orange">
-                <h3 className="text-onolo-orange font-semibold mb-3">ABSA Banking Details</h3>
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-onolo-gray">Bank:</span>
-                    <span>ABSA Bank</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-onolo-gray">Account Name:</span>
-                    <span>Onolo Group (Pty) Ltd</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-onolo-gray">Account Number:</span>
-                    <span>4073134909</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-onolo-gray">Branch:</span>
-                    <span>Business Commercial West Rand</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-onolo-gray">Reference:</span>
-                    <span>Your Order Number</span>
-                  </div>
-                </div>
-                <div className="mt-3 p-3 bg-onolo-orange bg-opacity-10 rounded-lg">
-                  <p className="text-xs text-onolo-orange">
-                    <strong>Important:</strong> Delivery will be processed once proof of payment (POP) is sent to:<br />
-                    <strong>Email:</strong> info@onologroup.com<br />
-                    <strong>WhatsApp:</strong> 071 770 3063<br />
-                    Please include your order number as reference.
-                  </p>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Order Summary */}
-          <div className="bg-onolo-dark-lighter rounded-2xl p-6">
-            <h2 className="text-lg font-semibold mb-4">Order Summary</h2>
-            <div className="space-y-2">
-              {cartItems.map((item) => (
-                <div key={item.id} className="flex justify-between">
-                  <span>{item.name} x{item.quantity}</span>
-                  <span>R {(item.price * item.quantity).toFixed(2)}</span>
-                </div>
-              ))}
-              <div className="flex justify-between">
-                <span>Subtotal</span>
-                <span>R {total.toFixed(2)}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Delivery</span>
-                <span>{deliveryCost > 0 ? `R ${deliveryCost.toFixed(2)}` : 'Free'}</span>
-              </div>
-              <div className="border-t border-onolo-gray pt-2 mt-2">
-                <div className="flex justify-between font-bold text-lg">
-                  <span>Total</span>
-                  <span className="text-onolo-orange">R {finalTotal.toFixed(2)}</span>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          <Button
-            type="submit"
-            disabled={isLoading || !locationData || !deliverySlot}
-            className="w-full bg-onolo-orange hover:bg-onolo-orange-dark text-white font-semibold py-4 px-6 rounded-2xl transition-colors disabled:opacity-50"
-          >
-            {isLoading ? 'Processing...' : 'Place Order'}
-          </Button>
-        </form>
+        <CheckoutForm
+          formData={formData}
+          locationData={locationData}
+          deliverySlot={deliverySlot}
+          cartItems={cartItems}
+          total={total}
+          deliveryCost={deliveryCost}
+          finalTotal={finalTotal}
+          isLoading={isLoading}
+          onSubmit={handleSubmit}
+          onChange={handleChange}
+          onLocationSelect={handleLocationSelect}
+          onSlotSelect={handleSlotSelect}
+        />
       </div>
     </div>
   );
