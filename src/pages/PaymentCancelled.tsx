@@ -38,7 +38,7 @@ const PaymentCancelled = () => {
 
         <div className="space-y-3">
           <Button
-            onClick={() => navigate('/orders')}
+            onClick={() => navigate('/checkout')}
             className="w-full bg-onolo-orange hover:bg-onolo-orange-dark"
           >
             <RefreshCw className="w-4 h-4 mr-2" />
