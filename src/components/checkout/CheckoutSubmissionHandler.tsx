@@ -75,14 +75,20 @@ const CheckoutSubmissionHandler: React.FC = () => {
         return;
       }
 
+      // For cash on delivery and EFT, clear cart and redirect
       clearCart();
       
-      toast({
-        title: "Order placed successfully!",
-        description: `Order #${order.id.slice(0, 8)} has been submitted. You'll receive an email confirmation shortly.`,
-      });
-
-      navigate('/orders');
+      if (formData.paymentMethod === 'eft') {
+        // Redirect to payment success page with EFT instructions
+        navigate(`/payment-success?order_id=${order.id}&payment_source=eft`);
+      } else {
+        // Cash on delivery
+        toast({
+          title: "Order placed successfully!",
+          description: `Order #${order.id.slice(0, 8)} has been submitted. You'll receive an email confirmation shortly.`,
+        });
+        navigate('/orders');
+      }
     } catch (error) {
       console.error('Error in checkout submission:', error);
     } finally {

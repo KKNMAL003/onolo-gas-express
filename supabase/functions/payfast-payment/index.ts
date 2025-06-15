@@ -12,14 +12,13 @@ const logStep = (step: string, details?: any) => {
   console.log(`[PAYFAST-PAYMENT] ${step}${detailsStr}`);
 };
 
-// MD5 implementation using Web Crypto API for Deno
+// Simple MD5 implementation for Deno
 const md5 = async (text: string): Promise<string> => {
   const encoder = new TextEncoder();
   const data = encoder.encode(text);
-  
-  // Import crypto-js for MD5 since Web Crypto API doesn't support MD5
-  const crypto = await import("https://deno.land/x/crypto@v0.17.0/crypto.ts");
-  return crypto.md5(text).toString();
+  const hashBuffer = await crypto.subtle.digest('MD5', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
 };
 
 serve(async (req) => {
@@ -74,7 +73,7 @@ serve(async (req) => {
       confirmation_address: customerEmail
     };
 
-    // Generate signature without passphrase first for debugging
+    // Generate signature
     const generateSignature = async (data: any, passphrase?: string) => {
       const sortedKeys = Object.keys(data).sort();
       const queryString = sortedKeys
@@ -140,7 +139,7 @@ serve(async (req) => {
     const { error: updateError } = await supabaseClient
       .from('orders')
       .update({ 
-        status: 'Pending',
+        status: 'pending',
         updated_by: 'payfast_system',
         updated_at: new Date().toISOString()
       })

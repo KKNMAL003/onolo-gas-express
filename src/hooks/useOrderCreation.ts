@@ -115,12 +115,14 @@ export const useOrderCreation = () => {
       console.log('Location data:', locationData);
       console.log('Delivery slot:', deliverySlot);
       
-      // Determine initial status based on payment method
-      let initialStatus = 'Pending';
+      // Determine initial status based on payment method - use only allowed status values
+      let initialStatus = 'pending'; // Default to lowercase pending
       if (formData.paymentMethod === 'cash_on_delivery') {
-        initialStatus = 'order_received'; // Cash orders are automatically received
+        initialStatus = 'pending'; // Start as pending, will be auto-progressed to order_received
       } else if (formData.paymentMethod === 'eft') {
-        initialStatus = 'Pending'; // EFT orders need proof of payment
+        initialStatus = 'pending'; // EFT orders start as pending until proof of payment
+      } else if (formData.paymentMethod === 'payfast' || formData.paymentMethod === 'paypal') {
+        initialStatus = 'pending'; // Payment orders start as pending until payment confirmation
       }
       
       // Validate required fields
@@ -191,7 +193,7 @@ export const useOrderCreation = () => {
 
       console.log('Order items created successfully');
 
-      // Send confirmation email for cash orders
+      // Send confirmation email for cash orders only after successful creation
       if (formData.paymentMethod === 'cash_on_delivery') {
         await sendOrderConfirmationEmail(order.id);
       }
