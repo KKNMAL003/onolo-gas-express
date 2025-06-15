@@ -4,7 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
-import { CreditCard, Loader2, AlertTriangle } from 'lucide-react';
+import { CreditCard, Loader2, AlertTriangle, Info } from 'lucide-react';
 
 interface PayPalPaymentProps {
   orderId: string;
@@ -62,9 +62,17 @@ const PayPalPayment: React.FC<PayPalPaymentProps> = ({
       console.log('PayPal payment response:', data);
 
       if (data.success && data.approvalUrl) {
-        // Redirect to PayPal approval URL
-        window.location.href = data.approvalUrl;
-        onPaymentInitiated();
+        // Show success message before redirect
+        toast({
+          title: "Redirecting to PayPal",
+          description: "You will be redirected to complete your payment securely.",
+        });
+
+        // Small delay to show the toast, then redirect
+        setTimeout(() => {
+          window.location.href = data.approvalUrl;
+          onPaymentInitiated();
+        }, 1000);
       } else {
         throw new Error(data.message || 'Failed to initialize PayPal payment');
       }
@@ -114,15 +122,25 @@ const PayPalPayment: React.FC<PayPalPaymentProps> = ({
       )}
 
       <div className="bg-onolo-dark rounded-lg p-4 mb-6">
-        <p className="text-sm text-onolo-gray mb-2">
-          You'll be redirected to PayPal to complete your payment securely.
-        </p>
-        <p className="text-xs text-onolo-gray mb-2">
-          PayPal supports all major credit cards and bank transfers.
-        </p>
-        <p className="text-xs text-yellow-400">
-          <strong>Note:</strong> Currently in sandbox mode for testing.
-        </p>
+        <div className="flex items-start space-x-2 mb-3">
+          <Info className="w-5 h-5 text-blue-400 mt-0.5" />
+          <div>
+            <h4 className="text-blue-400 font-semibold text-sm mb-1">Payment Process</h4>
+            <p className="text-sm text-onolo-gray mb-2">
+              You'll be redirected to PayPal to complete your payment securely using your PayPal account or credit card.
+            </p>
+          </div>
+        </div>
+        <div className="space-y-1 text-xs text-onolo-gray ml-7">
+          <p>• Supports all major credit cards and bank transfers</p>
+          <p>• Buyer protection and secure transactions</p>
+          <p>• Return to app after payment completion</p>
+        </div>
+        <div className="mt-3 p-3 bg-yellow-500 bg-opacity-10 rounded-lg ml-7">
+          <p className="text-xs text-yellow-400">
+            <strong>Sandbox Mode:</strong> Currently using PayPal's test environment.
+          </p>
+        </div>
       </div>
 
       <Button
@@ -133,7 +151,7 @@ const PayPalPayment: React.FC<PayPalPaymentProps> = ({
         {isProcessing ? (
           <>
             <Loader2 className="w-4 h-4 mr-2 animate-spin" />
-            Processing...
+            Redirecting to PayPal...
           </>
         ) : (
           <>

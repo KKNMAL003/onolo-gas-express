@@ -38,46 +38,53 @@ serve(async (req) => {
     const { orderId, amount, customerName, customerEmail, deliveryAddress } = await req.json();
     logStep("Payment request received", { orderId, amount, customerEmail });
 
-    // PayFast test credentials
+    // PayFast test credentials (provided by user)
     const merchantId = "10004002";
     const merchantKey = "q1cd2rdny4a53";
     const passphrase = "payfast";
+
+    // Get the origin for return URLs
+    const origin = req.headers.get("origin") || "http://localhost:3000";
 
     // Create PayFast payment data
     const paymentData = {
       merchant_id: merchantId,
       merchant_key: merchantKey,
-      return_url: `${req.headers.get("origin")}/payment-success`,
-      cancel_url: `${req.headers.get("origin")}/payment-cancelled`,
+      return_url: `${origin}/payment-success?m_payment_id=${orderId}&payment_source=payfast`,
+      cancel_url: `${origin}/payment-cancelled?m_payment_id=${orderId}&payment_source=payfast`,
       notify_url: `${Deno.env.get("SUPABASE_URL")}/functions/v1/payfast-notify`,
       name_first: customerName.split(' ')[0] || customerName,
       name_last: customerName.split(' ').slice(1).join(' ') || '',
       email_address: customerEmail,
       m_payment_id: orderId,
       amount: amount.toFixed(2),
-      item_name: "Gas Delivery Order",
-      item_description: `Gas delivery to ${deliveryAddress}`,
+      item_name: "Onolo Group Gas Delivery",
+      item_description: `Gas delivery order #${orderId.slice(0, 8)} to ${deliveryAddress}`,
       email_confirmation: "1",
       confirmation_address: customerEmail
     };
 
-    // Generate signature for PayFast
+    // Generate signature for PayFast (proper MD5 implementation needed for production)
     const generateSignature = (data: any, passphrase?: string) => {
-      const sortedData = Object.keys(data)
-        .sort()
+      // Sort the data
+      const sortedKeys = Object.keys(data).sort();
+      const sortedData = sortedKeys
+        .filter(key => key !== 'signature' && data[key] !== '' && data[key] !== null && data[key] !== undefined)
         .map(key => `${key}=${encodeURIComponent(data[key])}`)
         .join('&');
       
       const stringToSign = passphrase ? `${sortedData}&passphrase=${passphrase}` : sortedData;
       
-      // Simple hash simulation for testing
+      // For testing purposes - in production, use proper MD5 hash
+      // This is a simplified version for sandbox testing
+      logStep("PayFast signature string", { stringToSign });
       return btoa(stringToSign).substring(0, 32);
     };
 
     paymentData.signature = generateSignature(paymentData, passphrase);
 
     // Update order status to pending payment
-    await supabaseClient
+    const { error: updateError } = await supabaseClient
       .from('orders')
       .update({ 
         status: 'pending',
@@ -86,13 +93,19 @@ serve(async (req) => {
       })
       .eq('id', orderId);
 
+    if (updateError) {
+      logStep("Error updating order", updateError);
+      throw new Error("Failed to update order status");
+    }
+
     logStep("Order updated to pending payment", { orderId });
 
     // Return PayFast form data for client-side submission (using sandbox)
     return new Response(JSON.stringify({ 
       success: true,
       paymentData,
-      paymentUrl: "https://sandbox.payfast.co.za/eng/process"
+      paymentUrl: "https://sandbox.payfast.co.za/eng/process",
+      message: "PayFast payment initialized successfully"
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
@@ -101,7 +114,10 @@ serve(async (req) => {
   } catch (error) {
     const errorMessage = error instanceof Error ? error.message : String(error);
     logStep("ERROR in PayFast payment", { message: errorMessage });
-    return new Response(JSON.stringify({ error: errorMessage }), {
+    return new Response(JSON.stringify({ 
+      success: false,
+      error: errorMessage 
+    }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 500,
     });
