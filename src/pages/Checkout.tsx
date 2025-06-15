@@ -1,9 +1,18 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
+import { useCart } from '@/contexts/CartContext';
+import { supabase } from '@/integrations/supabase/client';
+import { useToast } from '@/hooks/use-toast';
 
 const Checkout = () => {
   const navigate = useNavigate();
+  const { user, profile } = useAuth();
+  const { cartItems, getTotalPrice, clearCart } = useCart();
+  const { toast } = useToast();
+  const [isLoading, setIsLoading] = useState(false);
+
   const [formData, setFormData] = useState({
     name: '',
     email: '',
@@ -13,11 +22,100 @@ const Checkout = () => {
     paymentMethod: 'eft'
   });
 
-  const handleSubmit = (e: React.FormEvent) => {
+  // Autofill form data from user profile
+  useEffect(() => {
+    if (user && profile) {
+      setFormData(prev => ({
+        ...prev,
+        name: `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || user.email?.split('@')[0] || '',
+        email: user.email || '',
+        phone: profile.phone || '',
+        address: profile.address || ''
+      }));
+    }
+  }, [user, profile]);
+
+  const total = getTotalPrice();
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // Process order logic here
-    alert('Order placed successfully!');
-    navigate('/');
+    
+    if (!user) {
+      toast({
+        title: "Authentication required",
+        description: "Please sign in to place an order.",
+        variant: "destructive",
+      });
+      navigate('/auth');
+      return;
+    }
+
+    if (cartItems.length === 0) {
+      toast({
+        title: "Cart is empty",
+        description: "Please add items to your cart before checkout.",
+        variant: "destructive",
+      });
+      navigate('/order');
+      return;
+    }
+
+    setIsLoading(true);
+
+    try {
+      // Create order
+      const { data: order, error: orderError } = await supabase
+        .from('orders')
+        .insert({
+          user_id: user.id,
+          total_amount: total,
+          delivery_address: `${formData.address}, ${formData.city}`,
+          delivery_phone: formData.phone,
+          payment_method: formData.paymentMethod,
+          customer_name: formData.name,
+          customer_email: formData.email,
+          status: 'pending'
+        })
+        .select()
+        .single();
+
+      if (orderError) throw orderError;
+
+      // Create order items
+      const orderItems = cartItems.map(item => ({
+        order_id: order.id,
+        product_id: item.id,
+        product_name: item.name,
+        quantity: item.quantity,
+        unit_price: item.price,
+        total_price: item.price * item.quantity
+      }));
+
+      const { error: itemsError } = await supabase
+        .from('order_items')
+        .insert(orderItems);
+
+      if (itemsError) throw itemsError;
+
+      // Clear cart and redirect
+      clearCart();
+      
+      toast({
+        title: "Order placed successfully!",
+        description: `Order #${order.id.slice(0, 8)} has been submitted.`,
+      });
+
+      navigate('/orders');
+    } catch (error) {
+      console.error('Error placing order:', error);
+      toast({
+        title: "Error placing order",
+        description: "There was an error processing your order. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
@@ -126,16 +224,30 @@ const Checkout = () => {
                 />
                 <span>Credit/Debit Card</span>
               </label>
+
+              <label className="flex items-center space-x-3">
+                <input
+                  type="radio"
+                  name="paymentMethod"
+                  value="cash_on_delivery"
+                  checked={formData.paymentMethod === 'cash_on_delivery'}
+                  onChange={handleChange}
+                  className="text-onolo-orange"
+                />
+                <span>Cash on Delivery</span>
+              </label>
             </div>
           </div>
 
           <div className="bg-onolo-dark-lighter rounded-2xl p-6">
             <h2 className="text-lg font-semibold mb-4">Order Summary</h2>
             <div className="space-y-2">
-              <div className="flex justify-between">
-                <span>9 Kg LP Gas Bottle REFILL x1</span>
-                <span>R 344.00</span>
-              </div>
+              {cartItems.map((item) => (
+                <div key={item.id} className="flex justify-between">
+                  <span>{item.name} x{item.quantity}</span>
+                  <span>R {(item.price * item.quantity).toFixed(2)}</span>
+                </div>
+              ))}
               <div className="flex justify-between">
                 <span>Delivery</span>
                 <span>Free</span>
@@ -143,7 +255,7 @@ const Checkout = () => {
               <div className="border-t border-onolo-gray pt-2 mt-2">
                 <div className="flex justify-between font-bold text-lg">
                   <span>Total</span>
-                  <span className="text-onolo-orange">R 344.00</span>
+                  <span className="text-onolo-orange">R {total.toFixed(2)}</span>
                 </div>
               </div>
             </div>
@@ -151,9 +263,10 @@ const Checkout = () => {
 
           <button
             type="submit"
-            className="w-full bg-onolo-orange hover:bg-onolo-orange-dark text-white font-semibold py-4 px-6 rounded-2xl transition-colors"
+            disabled={isLoading}
+            className="w-full bg-onolo-orange hover:bg-onolo-orange-dark text-white font-semibold py-4 px-6 rounded-2xl transition-colors disabled:opacity-50"
           >
-            Place Order
+            {isLoading ? 'Processing...' : 'Place Order'}
           </button>
         </form>
       </div>

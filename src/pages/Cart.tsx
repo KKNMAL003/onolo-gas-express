@@ -1,41 +1,14 @@
 
-import React, { useState } from 'react';
+import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import { Minus, Plus, Trash2 } from 'lucide-react';
-
-interface CartItem {
-  id: string;
-  name: string;
-  price: number;
-  quantity: number;
-}
+import { useCart } from '@/contexts/CartContext';
 
 const Cart = () => {
   const navigate = useNavigate();
-  const [cartItems, setCartItems] = useState<CartItem[]>([
-    {
-      id: '9kg',
-      name: '9 Kg LP Gas Bottle REFILL',
-      price: 344.00,
-      quantity: 1
-    }
-  ]);
+  const { cartItems, updateQuantity, removeItem, getTotalPrice } = useCart();
 
-  const updateQuantity = (id: string, newQuantity: number) => {
-    if (newQuantity === 0) {
-      setCartItems(cartItems.filter(item => item.id !== id));
-    } else {
-      setCartItems(cartItems.map(item =>
-        item.id === id ? { ...item, quantity: newQuantity } : item
-      ));
-    }
-  };
-
-  const removeItem = (id: string) => {
-    setCartItems(cartItems.filter(item => item.id !== id));
-  };
-
-  const total = cartItems.reduce((sum, item) => sum + (item.price * item.quantity), 0);
+  const total = getTotalPrice();
 
   return (
     <div className="min-h-screen bg-onolo-dark text-white p-6">
