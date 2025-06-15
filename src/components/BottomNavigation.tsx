@@ -4,6 +4,8 @@ import { useNavigate, useLocation } from 'react-router-dom';
 import { Home, ShoppingCart, MessageSquare, Menu, FileText, ClipboardList } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { useCart } from '@/contexts/CartContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { useCommunications } from '@/hooks/useCommunications';
 
 interface NavItem {
   icon: React.ComponentType<{ className?: string }>;
@@ -23,7 +25,9 @@ const navItems: NavItem[] = [
 export const BottomNavigation = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { user } = useAuth();
   const { getTotalItems } = useCart();
+  const { unreadCount } = useCommunications();
   const totalItems = getTotalItems();
 
   return (
@@ -32,6 +36,7 @@ export const BottomNavigation = () => {
         {navItems.map((item) => {
           const isActive = location.pathname === item.path;
           const isCart = item.path === '/cart';
+          const isChat = item.path === '/chat';
           
           return (
             <button
@@ -49,6 +54,11 @@ export const BottomNavigation = () => {
                 {isCart && totalItems > 0 && (
                   <div className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">
                     {totalItems > 9 ? '9+' : totalItems}
+                  </div>
+                )}
+                {isChat && user && unreadCount > 0 && (
+                  <div className="absolute -top-2 -right-2 bg-onolo-orange text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">
+                    {unreadCount > 9 ? '9+' : unreadCount}
                   </div>
                 )}
               </div>
