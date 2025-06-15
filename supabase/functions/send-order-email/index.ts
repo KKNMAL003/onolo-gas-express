@@ -1,4 +1,3 @@
-
 import { serve } from "https://deno.land/std@0.190.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.0";
 import { Resend } from "npm:resend@4.0.0";
@@ -101,31 +100,22 @@ serve(async (req) => {
       throw new Error("RESEND_API_KEY environment variable is not set");
     }
 
-    // Send email to customer
-    const customerEmailResponse = await resend.emails.send({
-      from: "Onolo Group <info19music@gmail.com>",
-      to: [customerEmail],
+    // Send to customer and CC company email
+    const recipients = [customerEmail];
+    const companyEmail = "info@onologroup.com"; // Add your actual company email here
+    
+    const emailResponse = await resend.emails.send({
+      from: "Onolo Group <onboarding@resend.dev>", // Using Resend's verified domain
+      to: recipients,
+      cc: [companyEmail], // Company gets a copy
       subject,
       html: htmlContent,
     });
 
-    logStep("Customer email sent successfully", { 
-      emailId: customerEmailResponse.data?.id, 
-      to: customerEmail 
-    });
-
-    // Send copy to company email
-    const companyEmail = "info@onologroup.com";
-    const companyEmailResponse = await resend.emails.send({
-      from: "Onolo Group <info19music@gmail.com>",
-      to: [companyEmail],
-      subject: `[COPY] ${subject}`,
-      html: htmlContent,
-    });
-
-    logStep("Company email sent successfully", { 
-      emailId: companyEmailResponse.data?.id, 
-      to: companyEmail 
+    logStep("Email sent successfully", { 
+      emailId: emailResponse.data?.id, 
+      to: customerEmail, 
+      cc: companyEmail 
     });
 
     // Update order with email sent status
@@ -150,11 +140,7 @@ serve(async (req) => {
     }
 
     return new Response(
-      JSON.stringify({ 
-        success: true, 
-        customerEmailId: customerEmailResponse.data?.id,
-        companyEmailId: companyEmailResponse.data?.id
-      }),
+      JSON.stringify({ success: true, emailId: emailResponse.data?.id }),
       {
         status: 200,
         headers: { "Content-Type": "application/json", ...corsHeaders },

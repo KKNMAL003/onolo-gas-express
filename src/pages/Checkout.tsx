@@ -7,7 +7,6 @@ import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import CheckoutForm from '@/components/checkout/CheckoutForm';
 import PayFastPayment from '@/components/PayFastPayment';
-import PayPalPayment from '@/components/PayPalPayment';
 
 const Checkout = () => {
   const navigate = useNavigate();
@@ -16,7 +15,6 @@ const Checkout = () => {
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [showPayFast, setShowPayFast] = useState(false);
-  const [showPayPal, setShowPayPal] = useState(false);
   const [orderData, setOrderData] = useState<any>(null);
 
   const [formData, setFormData] = useState({
@@ -204,8 +202,9 @@ const Checkout = () => {
 
       console.log('Order items created successfully');
 
-      // Send order confirmation email for certain payment methods
-      if (!['payfast', 'paypal'].includes(formData.paymentMethod)) {
+      // Send order confirmation email for all payment methods except PayFast
+      // (PayFast will send its own confirmation after payment)
+      if (formData.paymentMethod !== 'payfast') {
         await sendOrderConfirmationEmail(order.id);
       }
 
@@ -219,18 +218,6 @@ const Checkout = () => {
           deliveryAddress: locationData.address
         });
         setShowPayFast(true);
-        return;
-      }
-
-      if (formData.paymentMethod === 'paypal') {
-        setOrderData({
-          orderId: order.id,
-          amount: finalTotal,
-          customerName: formData.name,
-          customerEmail: formData.email,
-          deliveryAddress: locationData.address
-        });
-        setShowPayPal(true);
         return;
       }
 
@@ -254,7 +241,7 @@ const Checkout = () => {
     }
   };
 
-  const handlePaymentInitiated = () => {
+  const handlePayFastInitiated = () => {
     clearCart();
     toast({
       title: "Payment initiated",
@@ -281,25 +268,7 @@ const Checkout = () => {
             customerName={orderData.customerName}
             customerEmail={orderData.customerEmail}
             deliveryAddress={orderData.deliveryAddress}
-            onPaymentInitiated={handlePaymentInitiated}
-          />
-        </div>
-      </div>
-    );
-  }
-
-  if (showPayPal && orderData) {
-    return (
-      <div className="min-h-screen bg-onolo-dark text-white p-6">
-        <div className="max-w-md mx-auto">
-          <h1 className="text-2xl font-bold mb-8">Complete Payment</h1>
-          <PayPalPayment
-            orderId={orderData.orderId}
-            amount={orderData.amount}
-            customerName={orderData.customerName}
-            customerEmail={orderData.customerEmail}
-            deliveryAddress={orderData.deliveryAddress}
-            onPaymentInitiated={handlePaymentInitiated}
+            onPaymentInitiated={handlePayFastInitiated}
           />
         </div>
       </div>
