@@ -51,25 +51,58 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
   const fetchProfile = async (userId: string) => {
     try {
+      console.log('Fetching profile for user:', userId);
       const { data, error } = await supabase
         .from('profiles')
         .select('*')
         .eq('id', userId)
         .single();
 
-      if (error && error.code !== 'PGRST116') {
+      if (error) {
         console.error('Error fetching profile:', error);
+        if (error.code === 'PGRST116') {
+          console.log('Profile not found, will be created on first update');
+        }
         return;
       }
 
+      console.log('Profile fetched successfully:', data);
       setProfile(data);
     } catch (error) {
       console.error('Error fetching profile:', error);
     }
   };
 
+  const createProfile = async (userId: string, firstName?: string, lastName?: string) => {
+    try {
+      console.log('Creating profile for user:', userId);
+      const { data, error } = await supabase
+        .from('profiles')
+        .insert({
+          id: userId,
+          first_name: firstName || null,
+          last_name: lastName || null,
+          phone: null,
+          address: null,
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error creating profile:', error);
+        return;
+      }
+
+      console.log('Profile created successfully:', data);
+      setProfile(data);
+    } catch (error) {
+      console.error('Error creating profile:', error);
+    }
+  };
+
   useEffect(() => {
-    // Set up auth state listener
+    console.log('Setting up auth state listener');
+    
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         console.log('Auth state change:', event, session?.user?.id);
@@ -77,10 +110,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         setUser(session?.user ?? null);
         
         if (session?.user) {
-          // Fetch profile after user is authenticated
           setTimeout(() => {
             fetchProfile(session.user.id);
-          }, 0);
+          }, 100);
         } else {
           setProfile(null);
         }
@@ -89,7 +121,6 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       }
     );
 
-    // Check for existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
       console.log('Initial session check:', session?.user?.id);
       setSession(session);
@@ -108,7 +139,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const signUp = async (email: string, password: string, firstName: string, lastName: string) => {
     const redirectUrl = `${window.location.origin}/`;
     
-    const { error } = await supabase.auth.signUp({
+    const { data, error } = await supabase.auth.signUp({
       email,
       password,
       options: {
@@ -119,6 +150,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
       }
     });
+    
+    if (!error && data.user) {
+      setTimeout(() => {
+        createProfile(data.user.id, firstName, lastName);
+      }, 100);
+    }
+    
     return { error };
   };
 
@@ -140,20 +178,31 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       return { error: { message: 'No user logged in' } };
     }
 
-    const { error } = await supabase
-      .from('profiles')
-      .update({
-        ...updates,
-        updated_at: new Date().toISOString(),
-      })
-      .eq('id', user.id);
+    console.log('Updating profile with:', updates);
 
-    if (!error) {
-      // Refresh profile data
-      await fetchProfile(user.id);
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .upsert({
+          id: user.id,
+          ...updates,
+          updated_at: new Date().toISOString(),
+        })
+        .select()
+        .single();
+
+      if (error) {
+        console.error('Error updating profile:', error);
+        return { error };
+      }
+
+      console.log('Profile updated successfully:', data);
+      setProfile(data);
+      return { error: null };
+    } catch (error) {
+      console.error('Error updating profile:', error);
+      return { error };
     }
-
-    return { error };
   };
 
   const value = {

@@ -22,15 +22,20 @@ const Checkout = () => {
     paymentMethod: 'eft'
   });
 
-  // Autofill form data from user profile
   useEffect(() => {
-    if (user && profile) {
+    console.log('Checkout: user and profile data:', { user: user?.email, profile });
+    
+    if (user) {
+      const firstName = profile?.first_name || '';
+      const lastName = profile?.last_name || '';
+      const fullName = `${firstName} ${lastName}`.trim();
+      
       setFormData(prev => ({
         ...prev,
-        name: `${profile.first_name || ''} ${profile.last_name || ''}`.trim() || user.email?.split('@')[0] || '',
+        name: fullName || user.email?.split('@')[0] || '',
         email: user.email || '',
-        phone: profile.phone || '',
-        address: profile.address || ''
+        phone: profile?.phone || '',
+        address: profile?.address || ''
       }));
     }
   }, [user, profile]);
@@ -63,7 +68,6 @@ const Checkout = () => {
     setIsLoading(true);
 
     try {
-      // Create order
       const { data: order, error: orderError } = await supabase
         .from('orders')
         .insert({
@@ -81,7 +85,6 @@ const Checkout = () => {
 
       if (orderError) throw orderError;
 
-      // Create order items
       const orderItems = cartItems.map(item => ({
         order_id: order.id,
         product_id: item.id,
@@ -97,7 +100,6 @@ const Checkout = () => {
 
       if (itemsError) throw itemsError;
 
-      // Clear cart and redirect
       clearCart();
       
       toast({
