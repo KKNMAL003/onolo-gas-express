@@ -198,10 +198,10 @@ serve(async (req) => {
     const { orderId, amount, customerName, customerEmail, deliveryAddress } = await req.json();
     logStep("Payment form request received", { orderId, amount, customerEmail });
 
-    // PayFast sandbox credentials
-    const merchantId = "10004002";
-    const merchantKey = "q1cd2rdny4a53";
-    const passphrase = "payfast";
+    // PayFast sandbox credentials - Updated with new sandbox info
+    const merchantId = "10039738";
+    const merchantKey = "ytbriqjdlcloh";
+    const passphrase = ""; // Leave empty for now unless you have a specific passphrase
 
     // Get the origin for return URLs
     const origin = req.headers.get("origin") || "http://localhost:3000";
@@ -256,8 +256,8 @@ serve(async (req) => {
       // Remove last ampersand
       paramString = paramString.slice(0, -1);
       
-      // Add passphrase if provided
-      if (passphrase) {
+      // Add passphrase if provided and not empty
+      if (passphrase && passphrase.trim() !== '') {
         paramString += `&passphrase=${encodeURIComponent(passphrase)}`;
       }
       
