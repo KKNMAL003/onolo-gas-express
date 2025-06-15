@@ -24,7 +24,7 @@ serve(async (req) => {
   );
 
   try {
-    logStep("PayFast payment function started");
+    logStep("PayFast Onsite payment function started");
 
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) throw new Error("No authorization header provided");
@@ -38,7 +38,7 @@ serve(async (req) => {
     const { orderId, amount, customerName, customerEmail, deliveryAddress } = await req.json();
     logStep("Payment request received", { orderId, amount, customerEmail });
 
-    // PayFast test credentials (provided by user)
+    // PayFast test credentials
     const merchantId = "10004002";
     const merchantKey = "q1cd2rdny4a53";
     const passphrase = "payfast";
@@ -46,7 +46,7 @@ serve(async (req) => {
     // Get the origin for return URLs
     const origin = req.headers.get("origin") || "http://localhost:3000";
 
-    // Create PayFast payment data
+    // Create PayFast payment data for Onsite
     const paymentData = {
       merchant_id: merchantId,
       merchant_key: merchantKey,
@@ -64,9 +64,8 @@ serve(async (req) => {
       confirmation_address: customerEmail
     };
 
-    // Generate signature for PayFast (proper MD5 implementation needed for production)
+    // Generate signature for PayFast
     const generateSignature = (data: any, passphrase?: string) => {
-      // Sort the data
       const sortedKeys = Object.keys(data).sort();
       const sortedData = sortedKeys
         .filter(key => key !== 'signature' && data[key] !== '' && data[key] !== null && data[key] !== undefined)
@@ -74,14 +73,49 @@ serve(async (req) => {
         .join('&');
       
       const stringToSign = passphrase ? `${sortedData}&passphrase=${passphrase}` : sortedData;
-      
-      // For testing purposes - in production, use proper MD5 hash
-      // This is a simplified version for sandbox testing
       logStep("PayFast signature string", { stringToSign });
+      
+      // For sandbox testing - in production, implement proper MD5 hash
       return btoa(stringToSign).substring(0, 32);
     };
 
     paymentData.signature = generateSignature(paymentData, passphrase);
+
+    // Convert data to form string for PayFast API
+    const dataToString = (dataArray: any) => {
+      let pfOutput = '';
+      for (const [key, val] of Object.entries(dataArray)) {
+        if (val !== '') {
+          pfOutput += `${key}=${encodeURIComponent(String(val))}&`;
+        }
+      }
+      return pfOutput.slice(0, -1); // Remove last ampersand
+    };
+
+    const pfParamString = dataToString(paymentData);
+    logStep("PayFast parameter string", { pfParamString });
+
+    // Call PayFast Onsite API to get UUID
+    const payfastUrl = "https://sandbox.payfast.co.za/onsite/process";
+    
+    const payfastResponse = await fetch(payfastUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/x-www-form-urlencoded',
+      },
+      body: pfParamString
+    });
+
+    if (!payfastResponse.ok) {
+      throw new Error(`PayFast API error: ${payfastResponse.status} ${payfastResponse.statusText}`);
+    }
+
+    const payfastResult = await payfastResponse.json();
+    logStep("PayFast Onsite response", payfastResult);
+
+    if (!payfastResult.uuid) {
+      throw new Error("Failed to get PayFast payment UUID");
+    }
 
     // Update order status to pending payment
     const { error: updateError } = await supabaseClient
@@ -100,12 +134,13 @@ serve(async (req) => {
 
     logStep("Order updated to pending payment", { orderId });
 
-    // Return PayFast form data for client-side submission (using sandbox)
+    // Return UUID for frontend to use with PayFast Onsite modal
     return new Response(JSON.stringify({ 
       success: true,
-      paymentData,
-      paymentUrl: "https://sandbox.payfast.co.za/eng/process",
-      message: "PayFast payment initialized successfully"
+      uuid: payfastResult.uuid,
+      returnUrl: `${origin}/payment-success?m_payment_id=${orderId}&payment_source=payfast`,
+      cancelUrl: `${origin}/payment-cancelled?m_payment_id=${orderId}&payment_source=payfast`,
+      message: "PayFast payment UUID generated successfully"
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
