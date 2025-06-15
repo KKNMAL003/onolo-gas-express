@@ -16,10 +16,32 @@ const Home = () => {
   };
 
   return (
-    <div className="min-h-screen bg-onolo-dark text-white p-6">
-      <div className="max-w-md mx-auto">
+    <div className="min-h-screen bg-onolo-dark text-white p-6 relative overflow-hidden">
+      <div className="max-w-md mx-auto relative">
+        {/* Background Graphics */}
+        <div className="absolute inset-0 pointer-events-none">
+          {/* Large Grey Location Pin Background */}
+          <div className="absolute top-8 left-1/2 transform -translate-x-1/2 opacity-10 z-0">
+            <MapPin className="w-32 h-32 text-gray-500" />
+          </div>
+          
+          {/* Orange Flashing Dot */}
+          <div className="absolute top-16 left-1/2 transform -translate-x-1/2 translate-x-2 z-0">
+            <div className="w-3 h-3 bg-onolo-orange rounded-full animate-pulse"></div>
+          </div>
+          
+          {/* Additional decorative orange dots */}
+          <div className="absolute top-12 right-8 z-0">
+            <div className="w-2 h-2 bg-onolo-orange rounded-full animate-ping opacity-75"></div>
+          </div>
+          
+          <div className="absolute top-24 left-8 z-0">
+            <div className="w-1.5 h-1.5 bg-onolo-orange rounded-full animate-pulse delay-300"></div>
+          </div>
+        </div>
+
         {/* Location Section */}
-        <div className="bg-onolo-dark-lighter rounded-2xl p-6 mb-12 border border-gray-700">
+        <div className="bg-onolo-dark-lighter rounded-2xl p-6 mb-12 border border-gray-700 relative z-10">
           <div className="flex items-center space-x-4 mb-4">
             <div className="w-12 h-12 bg-onolo-orange rounded-full flex items-center justify-center">
               <MapPin className="w-6 h-6 text-white" />
@@ -30,7 +52,7 @@ const Home = () => {
             </div>
           </div>
           <div className="flex items-center space-x-2 mb-6">
-            <div className="w-2 h-2 bg-onolo-orange rounded-full"></div>
+            <div className="w-2 h-2 bg-onolo-orange rounded-full animate-pulse"></div>
             <span className="text-onolo-orange font-medium">Open from 7 am to 10 pm</span>
           </div>
           <button
@@ -42,7 +64,7 @@ const Home = () => {
         </div>
 
         {/* Fuel Type Selection */}
-        <div className="mb-8">
+        <div className="mb-8 relative z-10">
           <h2 className="text-3xl font-bold mb-8 text-white">Select Fuel Type</h2>
           <div className="grid grid-cols-3 gap-4">
             <button
