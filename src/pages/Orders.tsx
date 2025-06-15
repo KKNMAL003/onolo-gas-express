@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -5,16 +6,6 @@ import { useToast } from '@/hooks/use-toast';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import OrderStatusTracker from '@/components/OrderStatusTracker';
-
-interface OrderStatusHistory {
-  id: string;
-  previous_status: string | null;
-  new_status: string;
-  changed_by: string | null;
-  notes: string | null;
-  estimated_time_range: string | null;
-  created_at: string;
-}
 
 interface Order {
   id: string;
@@ -31,7 +22,6 @@ interface Order {
     quantity: number;
     unit_price: number;
   }[];
-  order_status_history?: OrderStatusHistory[];
 }
 
 const Orders = () => {
@@ -76,36 +66,11 @@ const Orders = () => {
     }
   };
 
-  const fetchOrderHistory = async (orderId: string) => {
-    try {
-      const { data, error } = await supabase
-        .from('order_status_history')
-        .select('*')
-        .eq('order_id', orderId)
-        .order('created_at', { ascending: true });
-
-      if (error) throw error;
-      return data || [];
-    } catch (error) {
-      console.error('Error fetching order history:', error);
-      return [];
-    }
-  };
-
-  const toggleOrderExpansion = async (orderId: string) => {
+  const toggleOrderExpansion = (orderId: string) => {
     if (expandedOrder === orderId) {
       setExpandedOrder(null);
     } else {
       setExpandedOrder(orderId);
-      // Fetch order history when expanding
-      const history = await fetchOrderHistory(orderId);
-      setOrders(prevOrders =>
-        prevOrders.map(order =>
-          order.id === orderId
-            ? { ...order, order_status_history: history }
-            : order
-        )
-      );
     }
   };
 
@@ -166,12 +131,16 @@ const Orders = () => {
     }
   };
 
-  const getCurrentStatusEstimate = (order: Order) => {
-    if (order.order_status_history && order.order_status_history.length > 0) {
-      const latestHistory = order.order_status_history[order.order_status_history.length - 1];
-      return latestHistory.estimated_time_range;
+  const getStatusEstimate = (status: string) => {
+    switch (status) {
+      case 'order_received': return 'Processing within 2-4 hours';
+      case 'order_confirmed': return 'Scheduling within 4-8 hours';
+      case 'scheduled_for_delivery': return 'Usually within 24-48 hours';
+      case 'driver_dispatched': return 'Driver en route, 2-6 hours';
+      case 'out_for_delivery': return 'Delivery within 1-3 hours';
+      case 'delivered': return 'Completed';
+      default: return null;
     }
-    return null;
   };
 
   if (!user) {
@@ -243,7 +212,7 @@ const Orders = () => {
                 {expandedOrder === order.id && (
                   <OrderStatusTracker
                     status={order.status}
-                    estimatedTimeRange={getCurrentStatusEstimate(order)}
+                    estimatedTimeRange={getStatusEstimate(order.status)}
                     createdAt={order.created_at}
                   />
                 )}
