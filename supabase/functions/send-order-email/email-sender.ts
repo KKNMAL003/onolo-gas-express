@@ -22,7 +22,7 @@ export const sendCustomerEmail = async (order: any, resendApiKey: string) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: 'Onolo Group <info19music@gmail.com>',
+        from: 'Onolo Group <onboarding@resend.dev>',
         to: [order.customer_email],
         subject: `Order Confirmation #${shortOrderId} - Onolo Group`,
         html: customerEmailHtml,
@@ -60,7 +60,7 @@ export const sendCompanyEmail = async (order: any, resendApiKey: string) => {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        from: 'Onolo Group Orders <info19music@gmail.com>',
+        from: 'Onolo Group Orders <onboarding@resend.dev>',
         to: ['info19music@gmail.com'],
         subject: `New Order #${shortOrderId} from ${order.customer_name}`,
         html: companyEmailHtml,
