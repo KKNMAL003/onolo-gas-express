@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { Button } from '@/components/ui/button';
+import DeliveryReschedule from '@/components/DeliveryReschedule';
 
 interface Order {
   id: string;
@@ -12,6 +13,8 @@ interface Order {
   priority_level: string | null;
   estimated_delivery_start: string | null;
   estimated_delivery_end: string | null;
+  delivery_date: string | null;
+  preferred_delivery_window: string | null;
   order_items: {
     product_name: string;
     quantity: number;
@@ -22,24 +25,35 @@ interface Order {
 interface OrderActionsProps {
   order: Order;
   onCancelOrder: (orderId: string) => void;
+  onRescheduleSuccess: () => void;
 }
 
-const OrderActions: React.FC<OrderActionsProps> = ({ order, onCancelOrder }) => {
+const OrderActions: React.FC<OrderActionsProps> = ({ order, onCancelOrder, onRescheduleSuccess }) => {
   const canCancelOrder = order.status === 'pending' || order.status === 'order_received';
-
-  if (!canCancelOrder) {
-    return null;
-  }
+  const canReschedule = order.status === 'order_confirmed' || order.status === 'scheduled_for_delivery';
 
   return (
-    <Button
-      onClick={() => onCancelOrder(order.id)}
-      variant="destructive"
-      size="sm"
-      className="w-full mt-4"
-    >
-      Cancel Order
-    </Button>
+    <div className="space-y-2 mt-4">
+      {canReschedule && (
+        <DeliveryReschedule
+          orderId={order.id}
+          currentDate={order.delivery_date}
+          currentTimeWindow={order.preferred_delivery_window}
+          onRescheduleSuccess={onRescheduleSuccess}
+        />
+      )}
+      
+      {canCancelOrder && (
+        <Button
+          onClick={() => onCancelOrder(order.id)}
+          variant="destructive"
+          size="sm"
+          className="w-full"
+        >
+          Cancel Order
+        </Button>
+      )}
+    </div>
   );
 };
 

@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -16,6 +15,8 @@ interface Order {
   priority_level: string | null;
   estimated_delivery_start: string | null;
   estimated_delivery_end: string | null;
+  delivery_date: string | null;
+  preferred_delivery_window: string | null;
   order_items: {
     product_name: string;
     quantity: number;
@@ -102,6 +103,10 @@ const Orders = () => {
     }
   };
 
+  const handleRescheduleSuccess = () => {
+    fetchOrders(); // Refresh orders to show updated delivery schedule
+  };
+
   if (!user) {
     return (
       <div className="min-h-screen bg-onolo-dark text-white p-6 flex items-center justify-center">
@@ -150,6 +155,7 @@ const Orders = () => {
                 isExpanded={expandedOrder === order.id}
                 onToggleExpansion={toggleOrderExpansion}
                 onCancelOrder={cancelOrder}
+                onRescheduleSuccess={handleRescheduleSuccess}
               />
             ))}
           </div>

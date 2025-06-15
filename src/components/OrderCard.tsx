@@ -28,13 +28,15 @@ interface OrderCardProps {
   isExpanded: boolean;
   onToggleExpansion: (orderId: string) => void;
   onCancelOrder: (orderId: string) => void;
+  onRescheduleSuccess: () => void;
 }
 
 const OrderCard: React.FC<OrderCardProps> = ({
   order,
   isExpanded,
   onToggleExpansion,
-  onCancelOrder
+  onCancelOrder,
+  onRescheduleSuccess
 }) => {
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -100,7 +102,11 @@ const OrderCard: React.FC<OrderCardProps> = ({
       )}
 
       <OrderDetails order={order} />
-      <OrderActions order={order} onCancelOrder={onCancelOrder} />
+      <OrderActions 
+        order={order} 
+        onCancelOrder={onCancelOrder} 
+        onRescheduleSuccess={onRescheduleSuccess}
+      />
     </div>
   );
 };
