@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { X } from 'lucide-react';
 
@@ -51,6 +50,7 @@ const Menu = () => {
                 <div>
                   <h3 className="font-semibold text-white">Contact Details</h3>
                   <p className="text-onolo-gray">Phone: +27 11 464 5073</p>
+                  <p className="text-onolo-gray">WhatsApp: +27 71 770 3063</p>
                   <p className="text-onolo-gray">Fax: +27 86 520 9018</p>
                   <p className="text-onolo-gray">Email: info@onologroup.com</p>
                   <p className="text-onolo-gray">Website: www.onologroup.com</p>
@@ -185,6 +185,7 @@ const Menu = () => {
           <p className="text-onolo-gray">308 Knoppieslaagte Farm, Meerkat Rd,</p>
           <p className="text-onolo-gray">Timsrand AH, Centurion</p>
           <p className="text-onolo-orange font-semibold">info@onologroup.com</p>
+          <p className="text-onolo-orange font-semibold">WhatsApp: 071 770 3063</p>
         </div>
       </div>
     </div>

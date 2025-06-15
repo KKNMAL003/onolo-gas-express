@@ -403,11 +403,11 @@ const Checkout = () => {
 
             {formData.paymentMethod === 'eft' && (
               <div className="mt-4 p-4 bg-onolo-dark rounded-xl border border-onolo-orange">
-                <h3 className="text-onolo-orange font-semibold mb-3">Banking Details</h3>
+                <h3 className="text-onolo-orange font-semibold mb-3">ABSA Banking Details</h3>
                 <div className="space-y-2 text-sm">
                   <div className="flex justify-between">
                     <span className="text-onolo-gray">Bank:</span>
-                    <span>Standard Bank</span>
+                    <span>ABSA Bank</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-onolo-gray">Account Name:</span>
@@ -415,11 +415,11 @@ const Checkout = () => {
                   </div>
                   <div className="flex justify-between">
                     <span className="text-onolo-gray">Account Number:</span>
-                    <span>012345678</span>
+                    <span>4073134909</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-onolo-gray">Branch Code:</span>
-                    <span>051001</span>
+                    <span className="text-onolo-gray">Branch:</span>
+                    <span>Business Commercial West Rand</span>
                   </div>
                   <div className="flex justify-between">
                     <span className="text-onolo-gray">Reference:</span>
@@ -428,8 +428,10 @@ const Checkout = () => {
                 </div>
                 <div className="mt-3 p-3 bg-onolo-orange bg-opacity-10 rounded-lg">
                   <p className="text-xs text-onolo-orange">
-                    <strong>Important:</strong> Please send proof of payment (POP) to <br />
-                    <strong>info@onologroup.com</strong> with your order number as reference.
+                    <strong>Important:</strong> Delivery will be processed once proof of payment (POP) is sent to:<br />
+                    <strong>Email:</strong> info@onologroup.com<br />
+                    <strong>WhatsApp:</strong> 071 770 3063<br />
+                    Please include your order number as reference.
                   </p>
                 </div>
               </div>
