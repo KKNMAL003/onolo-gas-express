@@ -15,8 +15,8 @@ const navItems: NavItem[] = [
   { icon: Home, label: 'Home', path: '/' },
   { icon: FileText, label: 'Order', path: '/order' },
   { icon: ShoppingCart, label: 'Cart', path: '/cart' },
+  { icon: MessageSquare, label: 'Chat', path: '/chat' },
   { icon: ClipboardList, label: 'Orders', path: '/orders' },
-  { icon: Menu, label: 'Menu', path: '/menu' },
 ];
 
 export const BottomNavigation = () => {

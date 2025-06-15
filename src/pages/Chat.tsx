@@ -13,7 +13,7 @@ const Chat = () => {
         <iframe
           src="https://www.chatbase.co/chatbot-iframe/SzxvYORICrmmckhOCkvB6"
           width="100%"
-          style={{ height: '70vh', minHeight: '500px' }}
+          style={{ height: '100%', minHeight: '700px' }}
           frameBorder="0"
           className="rounded-2xl"
         />

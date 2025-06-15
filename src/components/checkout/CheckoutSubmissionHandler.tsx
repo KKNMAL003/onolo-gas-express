@@ -33,7 +33,6 @@ const CheckoutSubmissionHandler: React.FC = () => {
     toast
   } = useCheckout();
 
-  const [showPayFast, setShowPayFast] = useState(false);
   const [showPayPal, setShowPayPal] = useState(false);
   const [orderData, setOrderData] = useState<OrderData | null>(null);
 
@@ -49,19 +48,6 @@ const CheckoutSubmissionHandler: React.FC = () => {
       }
 
       // Handle payment method
-      if (formData.paymentMethod === 'payfast') {
-        setOrderData({
-          orderId: order.id,
-          amount: finalTotal,
-          customerName: formData.name,
-          customerEmail: formData.email,
-          deliveryAddress: locationData!.address
-        });
-        setShowPayFast(true);
-        setIsLoading(false);
-        return;
-      }
-
       if (formData.paymentMethod === 'paypal') {
         setOrderData({
           orderId: order.id,
@@ -111,10 +97,10 @@ const CheckoutSubmissionHandler: React.FC = () => {
   };
 
   // Show payment flow if needed
-  if (showPayFast || showPayPal) {
+  if (showPayPal) {
     return (
       <PaymentFlowHandler
-        showPayFast={showPayFast}
+        showPayFast={false}
         showPayPal={showPayPal}
         orderData={orderData}
         onPaymentInitiated={handlePaymentInitiated}
