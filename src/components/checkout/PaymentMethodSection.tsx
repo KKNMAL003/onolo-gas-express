@@ -28,7 +28,7 @@ const PaymentMethodSection: React.FC<PaymentMethodSectionProps> = ({
           <span>EFT (Electronic Funds Transfer)</span>
         </label>
         
-        <label className="flex items-center space-x-3">
+        <label className="flex items-center space-x-3 opacity-50">
           <input
             type="radio"
             name="paymentMethod"
@@ -36,11 +36,12 @@ const PaymentMethodSection: React.FC<PaymentMethodSectionProps> = ({
             checked={paymentMethod === 'card'}
             onChange={onChange}
             className="text-onolo-orange"
+            disabled
           />
-          <span>Credit/Debit Card</span>
+          <span>Credit/Debit Card (Coming Soon)</span>
         </label>
 
-        <label className="flex items-center space-x-3">
+        <label className="flex items-center space-x-3 opacity-50">
           <input
             type="radio"
             name="paymentMethod"
@@ -48,11 +49,24 @@ const PaymentMethodSection: React.FC<PaymentMethodSectionProps> = ({
             checked={paymentMethod === 'payfast'}
             onChange={onChange}
             className="text-onolo-orange"
+            disabled
           />
           <div className="flex items-center">
             <CreditCard className="w-4 h-4 mr-2" />
-            <span>PayFast (Instant Payment)</span>
+            <span>PayFast (Coming Soon)</span>
           </div>
+        </label>
+
+        <label className="flex items-center space-x-3">
+          <input
+            type="radio"
+            name="paymentMethod"
+            value="paypal"
+            checked={paymentMethod === 'paypal'}
+            onChange={onChange}
+            className="text-onolo-orange"
+          />
+          <span>PayPal</span>
         </label>
 
         <label className="flex items-center space-x-3">
@@ -101,6 +115,18 @@ const PaymentMethodSection: React.FC<PaymentMethodSectionProps> = ({
               Please include your order number as reference.
             </p>
           </div>
+        </div>
+      )}
+
+      {paymentMethod === 'paypal' && (
+        <div className="mt-4 p-4 bg-onolo-dark rounded-xl border border-blue-500">
+          <h3 className="text-blue-400 font-semibold mb-3">PayPal Payment</h3>
+          <p className="text-sm text-onolo-gray mb-2">
+            You'll be redirected to PayPal to complete your payment securely.
+          </p>
+          <p className="text-xs text-yellow-400">
+            <strong>Note:</strong> Currently in sandbox mode for testing.
+          </p>
         </div>
       )}
     </div>
