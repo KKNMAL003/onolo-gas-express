@@ -57,12 +57,21 @@ export type Database = {
           customer_name: string
           delivery_address: string
           delivery_phone: string
+          delivery_zone: string | null
+          driver_id: string | null
+          estimated_delivery_end: string | null
+          estimated_delivery_start: string | null
           id: string
           notes: string | null
+          payment_confirmation_sent: boolean | null
           payment_method: string
+          priority_level: string | null
+          receipt_sent: boolean | null
           status: string
           total_amount: number
+          tracking_notes: string | null
           updated_at: string
+          updated_by: string | null
           user_id: string
         }
         Insert: {
@@ -71,12 +80,21 @@ export type Database = {
           customer_name: string
           delivery_address: string
           delivery_phone: string
+          delivery_zone?: string | null
+          driver_id?: string | null
+          estimated_delivery_end?: string | null
+          estimated_delivery_start?: string | null
           id?: string
           notes?: string | null
+          payment_confirmation_sent?: boolean | null
           payment_method: string
+          priority_level?: string | null
+          receipt_sent?: boolean | null
           status?: string
           total_amount: number
+          tracking_notes?: string | null
           updated_at?: string
+          updated_by?: string | null
           user_id: string
         }
         Update: {
@@ -85,12 +103,21 @@ export type Database = {
           customer_name?: string
           delivery_address?: string
           delivery_phone?: string
+          delivery_zone?: string | null
+          driver_id?: string | null
+          estimated_delivery_end?: string | null
+          estimated_delivery_start?: string | null
           id?: string
           notes?: string | null
+          payment_confirmation_sent?: boolean | null
           payment_method?: string
+          priority_level?: string | null
+          receipt_sent?: boolean | null
           status?: string
           total_amount?: number
+          tracking_notes?: string | null
           updated_at?: string
+          updated_by?: string | null
           user_id?: string
         }
         Relationships: []
