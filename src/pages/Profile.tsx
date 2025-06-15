@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
@@ -7,7 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import DeliveryPreferences from '@/components/DeliveryPreferences';
-import { User, Save, X } from 'lucide-react';
+import { User, Save, X, Mail } from 'lucide-react';
 
 const Profile = () => {
   const navigate = useNavigate();
@@ -94,6 +95,24 @@ const Profile = () => {
           >
             <X className="w-5 h-5" />
           </Button>
+        </div>
+
+        {/* Account Information */}
+        <div className="bg-onolo-dark-lighter rounded-2xl p-6">
+          <h2 className="text-lg font-semibold mb-4 flex items-center">
+            <Mail className="w-5 h-5 mr-2" />
+            Account Information
+          </h2>
+          
+          <div className="space-y-3">
+            <div>
+              <Label htmlFor="email" className="text-onolo-gray">Email Address</Label>
+              <div className="w-full p-3 bg-onolo-dark border border-onolo-gray rounded-xl text-white mt-2 opacity-60">
+                {user.email}
+              </div>
+              <p className="text-xs text-onolo-gray mt-1">Email address cannot be changed from this page</p>
+            </div>
+          </div>
         </div>
 
         {/* Personal Information */}

@@ -23,7 +23,7 @@ export const sendCustomerEmail = async (order: any, resendApiKey: string) => {
       },
       body: JSON.stringify({
         from: 'Onolo Group <onboarding@resend.dev>',
-        to: [order.customer_email],
+        to: [order.customer_email], // This should use the customer_email from the order
         subject: `Order Confirmation #${shortOrderId} - Onolo Group`,
         html: customerEmailHtml,
       }),

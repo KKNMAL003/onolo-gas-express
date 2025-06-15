@@ -39,17 +39,18 @@ const PaymentMethodSection: React.FC<PaymentMethodSectionProps> = ({
           <span>Credit/Debit Card (Currently Unavailable)</span>
         </label>
 
-        <label className="flex items-center space-x-3 opacity-50">
+        <label className="flex items-center space-x-3">
           <input
             type="radio"
             name="paymentMethod"
             value="payfast"
-            disabled
+            checked={paymentMethod === 'payfast'}
+            onChange={onChange}
             className="text-onolo-orange"
           />
           <div className="flex items-center">
             <CreditCard className="w-4 h-4 mr-2" />
-            <span>PayFast (Currently Unavailable)</span>
+            <span>PayFast (South African Payment Gateway)</span>
           </div>
         </label>
 
@@ -112,6 +113,23 @@ const PaymentMethodSection: React.FC<PaymentMethodSectionProps> = ({
               <strong>Email:</strong> info@onologroup.com<br />
               <strong>WhatsApp:</strong> 071 770 3063<br />
               Please include your order number as reference.
+            </p>
+          </div>
+        </div>
+      )}
+
+      {paymentMethod === 'payfast' && (
+        <div className="mt-4 p-4 bg-onolo-dark rounded-xl border border-onolo-orange">
+          <h3 className="text-onolo-orange font-semibold mb-3">PayFast Payment</h3>
+          <div className="space-y-2 text-sm">
+            <p className="text-onolo-gray">
+              You'll be redirected to PayFast to complete your payment securely.
+            </p>
+            <p className="text-xs text-onolo-gray">
+              PayFast supports all major South African banks and payment methods including EFT, credit cards, and instant payments.
+            </p>
+            <p className="text-xs text-yellow-400">
+              <strong>Note:</strong> Currently in test mode. Use PayFast's test payment methods.
             </p>
           </div>
         </div>

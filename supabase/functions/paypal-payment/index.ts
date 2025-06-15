@@ -30,7 +30,7 @@ async function getPayPalAccessToken() {
   return data.access_token;
 }
 
-async function createPayPalOrder(accessToken: string, amount: number, orderId: string) {
+async function createPayPalOrder(accessToken: string, amount: number, orderId: string, origin: string) {
   const response = await fetch(`${PAYPAL_BASE_URL}/v2/checkout/orders`, {
     method: 'POST',
     headers: {
@@ -48,8 +48,8 @@ async function createPayPalOrder(accessToken: string, amount: number, orderId: s
         description: `Onolo Group Order #${orderId.slice(0, 8)}`,
       }],
       application_context: {
-        return_url: `${Deno.env.get('SUPABASE_URL')?.replace('supabase.co', 'supabase.co')}/payment-success?order_id=${orderId}`,
-        cancel_url: `${Deno.env.get('SUPABASE_URL')?.replace('supabase.co', 'supabase.co')}/payment-cancelled?order_id=${orderId}`,
+        return_url: `${origin}/payment-success?order_id=${orderId}`,
+        cancel_url: `${origin}/payment-cancelled?order_id=${orderId}`,
         brand_name: 'Onolo Group',
         landing_page: 'BILLING',
         user_action: 'PAY_NOW',
@@ -81,8 +81,11 @@ serve(async (req) => {
     const accessToken = await getPayPalAccessToken();
     console.log('PayPal access token obtained');
 
+    // Get the origin from the request headers
+    const origin = req.headers.get('origin') || req.headers.get('referer')?.split('/').slice(0, 3).join('/') || 'http://localhost:3000';
+
     // Create PayPal order
-    const paypalOrder = await createPayPalOrder(accessToken, amount, orderId);
+    const paypalOrder = await createPayPalOrder(accessToken, amount, orderId, origin);
     console.log('PayPal order created:', paypalOrder.id);
 
     // Find the approval URL
