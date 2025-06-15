@@ -1,4 +1,3 @@
-
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
@@ -40,8 +39,57 @@ const Orders = () => {
   useEffect(() => {
     if (user) {
       fetchOrders();
+      
+      // Set up real-time subscription for order status changes
+      const channel = supabase
+        .channel('orders-changes')
+        .on(
+          'postgres_changes',
+          {
+            event: '*', // Listen to all changes (INSERT, UPDATE, DELETE)
+            schema: 'public',
+            table: 'orders',
+            filter: `user_id=eq.${user.id}` // Only listen to changes for this user's orders
+          },
+          (payload) => {
+            console.log('Real-time order update received:', payload);
+            
+            if (payload.eventType === 'UPDATE') {
+              const updatedOrder = payload.new as any;
+              setOrders(prevOrders => 
+                prevOrders.map(order => 
+                  order.id === updatedOrder.id 
+                    ? { ...order, ...updatedOrder }
+                    : order
+                )
+              );
+              
+              // Show toast notification for status changes
+              if (payload.old?.status !== updatedOrder.status) {
+                toast({
+                  title: "Order Status Updated",
+                  description: `Order #${updatedOrder.id.slice(0, 8)} status changed to ${updatedOrder.status.replace(/_/g, ' ')}`,
+                });
+              }
+            } else if (payload.eventType === 'INSERT') {
+              // Handle new orders (if needed)
+              fetchOrders(); // Refresh to get complete order data with items
+            } else if (payload.eventType === 'DELETE') {
+              const deletedOrder = payload.old as any;
+              setOrders(prevOrders => 
+                prevOrders.filter(order => order.id !== deletedOrder.id)
+              );
+            }
+          }
+        )
+        .subscribe();
+
+      // Cleanup subscription on unmount
+      return () => {
+        supabase.removeChannel(channel);
+      };
     }
-  }, [user]);
+  }, [user, toast]);
 
   const fetchOrders = async () => {
     try {
