@@ -61,7 +61,8 @@ const CheckoutSubmissionHandler: React.FC = () => {
         return;
       }
 
-      // For cash on delivery and EFT, clear cart and redirect
+      // For cash on delivery and EFT, send confirmation email and clear cart
+      await sendOrderConfirmationEmail(order.id);
       clearCart();
       
       if (formData.paymentMethod === 'eft') {
@@ -83,7 +84,7 @@ const CheckoutSubmissionHandler: React.FC = () => {
   };
 
   const handlePaymentInitiated = async () => {
-    // Send email for payment-based orders too
+    // Send email for PayPal orders after payment is initiated
     if (orderData?.orderId) {
       await sendOrderConfirmationEmail(orderData.orderId);
     }

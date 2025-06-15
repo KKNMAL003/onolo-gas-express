@@ -1,4 +1,3 @@
-
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCart } from '@/contexts/CartContext';
@@ -34,9 +33,19 @@ export const useOrderCreation = () => {
         });
       } else {
         console.log('Confirmation email sent successfully:', data);
+        toast({
+          title: "Order placed successfully!",
+          description: "Your order was created and confirmation email has been sent.",
+          variant: "default",
+        });
       }
     } catch (error) {
       console.error('Failed to send confirmation email:', error);
+      toast({
+        title: "Order placed successfully!",
+        description: "Your order was created but there was an issue sending the confirmation email. You can view your order in the Orders section.",
+        variant: "default",
+      });
     }
   };
 
