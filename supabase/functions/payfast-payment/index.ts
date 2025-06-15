@@ -12,6 +12,15 @@ const logStep = (step: string, details?: any) => {
   console.log(`[PAYFAST-PAYMENT] ${step}${detailsStr}`);
 };
 
+// Simple MD5 implementation for signature generation
+const md5 = async (text: string): Promise<string> => {
+  const encoder = new TextEncoder();
+  const data = encoder.encode(text);
+  const hashBuffer = await crypto.subtle.digest('MD5', data);
+  const hashArray = Array.from(new Uint8Array(hashBuffer));
+  return hashArray.map(b => b.toString(16).padStart(2, '0')).join('');
+};
+
 serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -38,7 +47,7 @@ serve(async (req) => {
     const { orderId, amount, customerName, customerEmail, deliveryAddress } = await req.json();
     logStep("Payment request received", { orderId, amount, customerEmail });
 
-    // PayFast test credentials
+    // PayFast sandbox credentials
     const merchantId = "10004002";
     const merchantKey = "q1cd2rdny4a53";
     const passphrase = "payfast";
@@ -46,7 +55,7 @@ serve(async (req) => {
     // Get the origin for return URLs
     const origin = req.headers.get("origin") || "http://localhost:3000";
 
-    // Create PayFast payment data for Onsite
+    // Create PayFast payment data
     const paymentData = {
       merchant_id: merchantId,
       merchant_key: merchantKey,
@@ -59,43 +68,40 @@ serve(async (req) => {
       m_payment_id: orderId,
       amount: amount.toFixed(2),
       item_name: "Onolo Group Gas Delivery",
-      item_description: `Gas delivery order #${orderId.slice(0, 8)} to ${deliveryAddress}`,
+      item_description: `Gas delivery order #${orderId.slice(0, 8)} to ${deliveryAddress.substring(0, 50)}`,
       email_confirmation: "1",
       confirmation_address: customerEmail
     };
 
-    // Generate signature for PayFast
-    const generateSignature = (data: any, passphrase?: string) => {
+    // Generate signature
+    const generateSignature = async (data: any, passphrase?: string) => {
+      // Sort keys and create query string
       const sortedKeys = Object.keys(data).sort();
-      const sortedData = sortedKeys
+      const queryString = sortedKeys
         .filter(key => key !== 'signature' && data[key] !== '' && data[key] !== null && data[key] !== undefined)
         .map(key => `${key}=${encodeURIComponent(data[key])}`)
         .join('&');
       
-      const stringToSign = passphrase ? `${sortedData}&passphrase=${passphrase}` : sortedData;
-      logStep("PayFast signature string", { stringToSign });
+      const stringToSign = passphrase ? `${queryString}&passphrase=${passphrase}` : queryString;
+      logStep("PayFast signature string", { stringToSign: stringToSign.substring(0, 200) + '...' });
       
-      // For sandbox testing - in production, implement proper MD5 hash
-      return btoa(stringToSign).substring(0, 32);
+      return await md5(stringToSign);
     };
 
-    paymentData.signature = generateSignature(paymentData, passphrase);
+    paymentData.signature = await generateSignature(paymentData, passphrase);
+    logStep("Signature generated", { signature: paymentData.signature });
 
     // Convert data to form string for PayFast API
-    const dataToString = (dataArray: any) => {
-      let pfOutput = '';
-      for (const [key, val] of Object.entries(dataArray)) {
-        if (val !== '') {
-          pfOutput += `${key}=${encodeURIComponent(String(val))}&`;
-        }
+    const formData = new URLSearchParams();
+    Object.entries(paymentData).forEach(([key, value]) => {
+      if (value !== '') {
+        formData.append(key, String(value));
       }
-      return pfOutput.slice(0, -1); // Remove last ampersand
-    };
+    });
 
-    const pfParamString = dataToString(paymentData);
-    logStep("PayFast parameter string", { pfParamString });
+    logStep("Calling PayFast Onsite API");
 
-    // Call PayFast Onsite API to get UUID
+    // Call PayFast Onsite API
     const payfastUrl = "https://sandbox.payfast.co.za/onsite/process";
     
     const payfastResponse = await fetch(payfastUrl, {
@@ -103,25 +109,38 @@ serve(async (req) => {
       headers: {
         'Content-Type': 'application/x-www-form-urlencoded',
       },
-      body: pfParamString
+      body: formData.toString()
+    });
+
+    const responseText = await payfastResponse.text();
+    logStep("PayFast API response", { 
+      status: payfastResponse.status, 
+      statusText: payfastResponse.statusText,
+      response: responseText.substring(0, 500)
     });
 
     if (!payfastResponse.ok) {
-      throw new Error(`PayFast API error: ${payfastResponse.status} ${payfastResponse.statusText}`);
+      throw new Error(`PayFast API error: ${payfastResponse.status} ${payfastResponse.statusText} - ${responseText}`);
     }
 
-    const payfastResult = await payfastResponse.json();
-    logStep("PayFast Onsite response", payfastResult);
+    let payfastResult;
+    try {
+      payfastResult = JSON.parse(responseText);
+    } catch (e) {
+      throw new Error(`Invalid JSON response from PayFast: ${responseText}`);
+    }
+
+    logStep("PayFast Onsite response parsed", payfastResult);
 
     if (!payfastResult.uuid) {
-      throw new Error("Failed to get PayFast payment UUID");
+      throw new Error(`Failed to get PayFast payment UUID: ${JSON.stringify(payfastResult)}`);
     }
 
     // Update order status to pending payment
     const { error: updateError } = await supabaseClient
       .from('orders')
       .update({ 
-        status: 'pending',
+        status: 'Pending',
         updated_by: 'payfast_system',
         updated_at: new Date().toISOString()
       })

@@ -60,6 +60,24 @@ const PayFastPayment: React.FC<PayFastPaymentProps> = ({
     loadPayFastScript();
   }, []);
 
+  const updateOrderToFailed = async (reason: string) => {
+    try {
+      await supabase
+        .from('orders')
+        .update({ 
+          status: 'payment_failed',
+          updated_by: 'payfast_system',
+          updated_at: new Date().toISOString(),
+          tracking_notes: reason
+        })
+        .eq('id', orderId);
+      
+      console.log(`Order ${orderId} marked as payment failed: ${reason}`);
+    } catch (error) {
+      console.error('Failed to update order status to failed:', error);
+    }
+  };
+
   const initiatePayFastPayment = async () => {
     if (!user) {
       toast({
@@ -97,7 +115,9 @@ const PayFastPayment: React.FC<PayFastPaymentProps> = ({
 
       if (error) {
         console.error('PayFast payment function error:', error);
-        throw error;
+        const errorMessage = 'Failed to initialize payment. Please try again or choose a different payment method.';
+        await updateOrderToFailed(`PayFast initialization failed: ${error.message}`);
+        throw new Error(errorMessage);
       }
 
       console.log('PayFast payment response:', data);
@@ -118,7 +138,7 @@ const PayFastPayment: React.FC<PayFastPaymentProps> = ({
               return_url: data.returnUrl,
               cancel_url: data.cancelUrl
             },
-            (result: boolean) => {
+            async (result: boolean) => {
               if (result === true) {
                 // Payment completed successfully
                 console.log('PayFast payment completed successfully');
@@ -132,9 +152,10 @@ const PayFastPayment: React.FC<PayFastPaymentProps> = ({
               } else {
                 // Payment window closed or cancelled
                 console.log('PayFast payment window closed');
+                await updateOrderToFailed('Payment cancelled by user');
                 toast({
                   title: "Payment Cancelled",
-                  description: "Payment was cancelled or the window was closed.",
+                  description: "Payment was cancelled. Your order status has been updated to failed.",
                   variant: "destructive",
                 });
                 setIsProcessing(false);
@@ -144,7 +165,9 @@ const PayFastPayment: React.FC<PayFastPaymentProps> = ({
         }, 500);
 
       } else {
-        throw new Error(data.error || 'Failed to initialize PayFast payment');
+        const errorMessage = data.error || 'Failed to initialize PayFast payment';
+        await updateOrderToFailed(`PayFast initialization failed: ${errorMessage}`);
+        throw new Error(errorMessage);
       }
     } catch (error) {
       console.error('PayFast payment error:', error);

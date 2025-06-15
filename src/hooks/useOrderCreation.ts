@@ -40,6 +40,30 @@ export const useOrderCreation = () => {
     }
   };
 
+  const updateOrderStatus = async (orderId: string, status: string, reason?: string) => {
+    try {
+      const { error } = await supabase
+        .from('orders')
+        .update({ 
+          status,
+          updated_by: 'system',
+          updated_at: new Date().toISOString(),
+          ...(reason && { tracking_notes: reason })
+        })
+        .eq('id', orderId);
+
+      if (error) {
+        console.error('Error updating order status:', error);
+        throw error;
+      }
+
+      console.log(`Order ${orderId} status updated to ${status}`);
+    } catch (error) {
+      console.error('Failed to update order status:', error);
+      throw error;
+    }
+  };
+
   const createOrder = async (
     formData: FormData,
     locationData: LocationData,
@@ -88,7 +112,12 @@ export const useOrderCreation = () => {
     try {
       console.log('Creating order with payment method:', formData.paymentMethod);
       
-      // Use 'Pending' with capital P to match the database default
+      // Determine initial status based on payment method
+      let initialStatus = 'Pending';
+      if (formData.paymentMethod === 'cash_on_delivery') {
+        initialStatus = 'order_received'; // Cash orders are automatically received
+      }
+      
       const { data: order, error: orderError } = await supabase
         .from('orders')
         .insert({
@@ -99,7 +128,7 @@ export const useOrderCreation = () => {
           payment_method: formData.paymentMethod,
           customer_name: formData.name,
           customer_email: formData.email,
-          status: 'Pending',
+          status: initialStatus,
           preferred_delivery_window: deliverySlot.timeWindow,
           delivery_date: deliverySlot.date,
           delivery_latitude: locationData.latitude,
@@ -138,8 +167,10 @@ export const useOrderCreation = () => {
 
       console.log('Order items created successfully');
 
-      // Send confirmation email
-      await sendOrderConfirmationEmail(order.id);
+      // Send confirmation email for cash orders
+      if (formData.paymentMethod === 'cash_on_delivery') {
+        await sendOrderConfirmationEmail(order.id);
+      }
 
       return order;
     } catch (error) {
@@ -156,6 +187,7 @@ export const useOrderCreation = () => {
   return {
     createOrder,
     sendOrderConfirmationEmail,
+    updateOrderStatus,
     clearCart,
     navigate,
     toast
