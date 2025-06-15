@@ -1,10 +1,16 @@
-
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import { useCart } from '@/contexts/CartContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import LocationPicker from '@/components/LocationPicker';
+import DeliverySlotPicker from '@/components/DeliverySlotPicker';
+import PayFastPayment from '@/components/PayFastPayment';
+import { CreditCard } from 'lucide-react';
 
 const Checkout = () => {
   const navigate = useNavigate();
@@ -12,6 +18,8 @@ const Checkout = () => {
   const { cartItems, getTotalPrice, clearCart } = useCart();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
+  const [showPayFast, setShowPayFast] = useState(false);
+  const [orderData, setOrderData] = useState<any>(null);
 
   const [formData, setFormData] = useState({
     name: '',
@@ -21,6 +29,19 @@ const Checkout = () => {
     city: '',
     paymentMethod: 'eft'
   });
+
+  const [locationData, setLocationData] = useState<{
+    latitude: number;
+    longitude: number;
+    address: string;
+    deliveryCost: number;
+  } | null>(null);
+
+  const [deliverySlot, setDeliverySlot] = useState<{
+    date: string;
+    timeWindow: string;
+    slotId: string;
+  } | null>(null);
 
   useEffect(() => {
     console.log('Checkout: user and profile data:', { user: user?.email, profile });
@@ -41,6 +62,17 @@ const Checkout = () => {
   }, [user, profile]);
 
   const total = getTotalPrice();
+  const deliveryCost = locationData?.deliveryCost || 0;
+  const finalTotal = total + deliveryCost;
+
+  const handleLocationSelect = (location: typeof locationData) => {
+    setLocationData(location);
+    setFormData(prev => ({ ...prev, address: location.address }));
+  };
+
+  const handleSlotSelect = (slot: typeof deliverySlot) => {
+    setDeliverySlot(slot);
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -65,6 +97,24 @@ const Checkout = () => {
       return;
     }
 
+    if (!locationData) {
+      toast({
+        title: "Location required",
+        description: "Please validate your delivery address.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    if (!deliverySlot) {
+      toast({
+        title: "Delivery slot required",
+        description: "Please select a delivery time slot.",
+        variant: "destructive",
+      });
+      return;
+    }
+
     setIsLoading(true);
 
     try {
@@ -72,13 +122,20 @@ const Checkout = () => {
         .from('orders')
         .insert({
           user_id: user.id,
-          total_amount: total,
-          delivery_address: `${formData.address}, ${formData.city}`,
+          total_amount: finalTotal,
+          delivery_address: locationData.address,
           delivery_phone: formData.phone,
           payment_method: formData.paymentMethod,
           customer_name: formData.name,
           customer_email: formData.email,
-          status: 'pending'
+          status: 'pending',
+          preferred_delivery_window: deliverySlot.timeWindow,
+          delivery_date: deliverySlot.date,
+          delivery_latitude: locationData.latitude,
+          delivery_longitude: locationData.longitude,
+          delivery_cost: deliveryCost,
+          service_area_validated: true,
+          auto_status_enabled: true
         })
         .select()
         .single();
@@ -100,6 +157,19 @@ const Checkout = () => {
 
       if (itemsError) throw itemsError;
 
+      // Handle payment method
+      if (formData.paymentMethod === 'payfast') {
+        setOrderData({
+          orderId: order.id,
+          amount: finalTotal,
+          customerName: formData.name,
+          customerEmail: formData.email,
+          deliveryAddress: locationData.address
+        });
+        setShowPayFast(true);
+        return;
+      }
+
       clearCart();
       
       toast({
@@ -120,6 +190,15 @@ const Checkout = () => {
     }
   };
 
+  const handlePayFastInitiated = () => {
+    clearCart();
+    toast({
+      title: "Payment initiated",
+      description: "Complete your payment to confirm the order.",
+    });
+    navigate('/orders');
+  };
+
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
     setFormData({
       ...formData,
@@ -127,78 +206,90 @@ const Checkout = () => {
     });
   };
 
+  if (showPayFast && orderData) {
+    return (
+      <div className="min-h-screen bg-onolo-dark text-white p-6">
+        <div className="max-w-md mx-auto">
+          <h1 className="text-2xl font-bold mb-8">Complete Payment</h1>
+          <PayFastPayment
+            orderId={orderData.orderId}
+            amount={orderData.amount}
+            customerName={orderData.customerName}
+            customerEmail={orderData.customerEmail}
+            deliveryAddress={orderData.deliveryAddress}
+            onPaymentInitiated={handlePayFastInitiated}
+          />
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="min-h-screen bg-onolo-dark text-white p-6">
       <div className="max-w-md mx-auto">
         <h1 className="text-2xl font-bold mb-8">Checkout</h1>
 
         <form onSubmit={handleSubmit} className="space-y-6">
+          {/* Customer Information */}
           <div className="bg-onolo-dark-lighter rounded-2xl p-6">
-            <h2 className="text-lg font-semibold mb-4">Delivery Information</h2>
+            <h2 className="text-lg font-semibold mb-4">Customer Information</h2>
             
             <div className="space-y-4">
               <div>
-                <label className="block text-sm font-medium mb-2">Full Name</label>
-                <input
+                <Label htmlFor="name">Full Name</Label>
+                <Input
                   type="text"
                   name="name"
                   value={formData.name}
                   onChange={handleChange}
-                  className="w-full p-3 bg-onolo-dark border border-onolo-gray rounded-xl text-white"
+                  className="w-full p-3 bg-onolo-dark border border-onolo-gray rounded-xl text-white mt-2"
                   required
                 />
               </div>
               
               <div>
-                <label className="block text-sm font-medium mb-2">Email</label>
-                <input
+                <Label htmlFor="email">Email</Label>
+                <Input
                   type="email"
                   name="email"
                   value={formData.email}
                   onChange={handleChange}
-                  className="w-full p-3 bg-onolo-dark border border-onolo-gray rounded-xl text-white"
+                  className="w-full p-3 bg-onolo-dark border border-onolo-gray rounded-xl text-white mt-2"
                   required
                 />
               </div>
               
               <div>
-                <label className="block text-sm font-medium mb-2">Phone</label>
-                <input
+                <Label htmlFor="phone">Phone</Label>
+                <Input
                   type="tel"
                   name="phone"
                   value={formData.phone}
                   onChange={handleChange}
-                  className="w-full p-3 bg-onolo-dark border border-onolo-gray rounded-xl text-white"
-                  required
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium mb-2">Address</label>
-                <input
-                  type="text"
-                  name="address"
-                  value={formData.address}
-                  onChange={handleChange}
-                  className="w-full p-3 bg-onolo-dark border border-onolo-gray rounded-xl text-white"
-                  required
-                />
-              </div>
-              
-              <div>
-                <label className="block text-sm font-medium mb-2">City</label>
-                <input
-                  type="text"
-                  name="city"
-                  value={formData.city}
-                  onChange={handleChange}
-                  className="w-full p-3 bg-onolo-dark border border-onolo-gray rounded-xl text-white"
+                  className="w-full p-3 bg-onolo-dark border border-onolo-gray rounded-xl text-white mt-2"
                   required
                 />
               </div>
             </div>
           </div>
 
+          {/* Location & Delivery */}
+          <div className="bg-onolo-dark-lighter rounded-2xl p-6">
+            <h2 className="text-lg font-semibold mb-4">Delivery Location</h2>
+            <LocationPicker
+              onLocationSelect={handleLocationSelect}
+              initialAddress={formData.address}
+            />
+          </div>
+
+          {/* Delivery Schedule */}
+          {locationData && (
+            <div className="bg-onolo-dark-lighter rounded-2xl p-6">
+              <DeliverySlotPicker onSlotSelect={handleSlotSelect} />
+            </div>
+          )}
+
+          {/* Payment Method */}
           <div className="bg-onolo-dark-lighter rounded-2xl p-6">
             <h2 className="text-lg font-semibold mb-4">Payment Method</h2>
             
@@ -225,6 +316,21 @@ const Checkout = () => {
                   className="text-onolo-orange"
                 />
                 <span>Credit/Debit Card</span>
+              </label>
+
+              <label className="flex items-center space-x-3">
+                <input
+                  type="radio"
+                  name="paymentMethod"
+                  value="payfast"
+                  checked={formData.paymentMethod === 'payfast'}
+                  onChange={handleChange}
+                  className="text-onolo-orange"
+                />
+                <div className="flex items-center">
+                  <CreditCard className="w-4 h-4 mr-2" />
+                  <span>PayFast (Instant Payment)</span>
+                </div>
               </label>
 
               <label className="flex items-center space-x-3">
@@ -275,6 +381,7 @@ const Checkout = () => {
             )}
           </div>
 
+          {/* Order Summary */}
           <div className="bg-onolo-dark-lighter rounded-2xl p-6">
             <h2 className="text-lg font-semibold mb-4">Order Summary</h2>
             <div className="space-y-2">
@@ -285,25 +392,29 @@ const Checkout = () => {
                 </div>
               ))}
               <div className="flex justify-between">
+                <span>Subtotal</span>
+                <span>R {total.toFixed(2)}</span>
+              </div>
+              <div className="flex justify-between">
                 <span>Delivery</span>
-                <span>Free</span>
+                <span>{deliveryCost > 0 ? `R ${deliveryCost.toFixed(2)}` : 'Free'}</span>
               </div>
               <div className="border-t border-onolo-gray pt-2 mt-2">
                 <div className="flex justify-between font-bold text-lg">
                   <span>Total</span>
-                  <span className="text-onolo-orange">R {total.toFixed(2)}</span>
+                  <span className="text-onolo-orange">R {finalTotal.toFixed(2)}</span>
                 </div>
               </div>
             </div>
           </div>
 
-          <button
+          <Button
             type="submit"
-            disabled={isLoading}
+            disabled={isLoading || !locationData || !deliverySlot}
             className="w-full bg-onolo-orange hover:bg-onolo-orange-dark text-white font-semibold py-4 px-6 rounded-2xl transition-colors disabled:opacity-50"
           >
             {isLoading ? 'Processing...' : 'Place Order'}
-          </button>
+          </Button>
         </form>
       </div>
     </div>

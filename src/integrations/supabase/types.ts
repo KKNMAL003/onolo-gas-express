@@ -9,6 +9,36 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      delivery_time_slots: {
+        Row: {
+          active: boolean | null
+          created_at: string
+          current_orders: number
+          date: string
+          id: string
+          max_orders: number
+          time_window: string
+        }
+        Insert: {
+          active?: boolean | null
+          created_at?: string
+          current_orders?: number
+          date: string
+          id?: string
+          max_orders?: number
+          time_window: string
+        }
+        Update: {
+          active?: boolean | null
+          created_at?: string
+          current_orders?: number
+          date?: string
+          id?: string
+          max_orders?: number
+          time_window?: string
+        }
+        Relationships: []
+      }
       order_items: {
         Row: {
           created_at: string
@@ -52,10 +82,15 @@ export type Database = {
       }
       orders: {
         Row: {
+          auto_status_enabled: boolean | null
           created_at: string
           customer_email: string
           customer_name: string
           delivery_address: string
+          delivery_cost: number | null
+          delivery_date: string | null
+          delivery_latitude: number | null
+          delivery_longitude: number | null
           delivery_phone: string
           delivery_zone: string | null
           driver_id: string | null
@@ -65,8 +100,10 @@ export type Database = {
           notes: string | null
           payment_confirmation_sent: boolean | null
           payment_method: string
+          preferred_delivery_window: string | null
           priority_level: string | null
           receipt_sent: boolean | null
+          service_area_validated: boolean | null
           status: string
           total_amount: number
           tracking_notes: string | null
@@ -75,10 +112,15 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          auto_status_enabled?: boolean | null
           created_at?: string
           customer_email: string
           customer_name: string
           delivery_address: string
+          delivery_cost?: number | null
+          delivery_date?: string | null
+          delivery_latitude?: number | null
+          delivery_longitude?: number | null
           delivery_phone: string
           delivery_zone?: string | null
           driver_id?: string | null
@@ -88,8 +130,10 @@ export type Database = {
           notes?: string | null
           payment_confirmation_sent?: boolean | null
           payment_method: string
+          preferred_delivery_window?: string | null
           priority_level?: string | null
           receipt_sent?: boolean | null
+          service_area_validated?: boolean | null
           status?: string
           total_amount: number
           tracking_notes?: string | null
@@ -98,10 +142,15 @@ export type Database = {
           user_id: string
         }
         Update: {
+          auto_status_enabled?: boolean | null
           created_at?: string
           customer_email?: string
           customer_name?: string
           delivery_address?: string
+          delivery_cost?: number | null
+          delivery_date?: string | null
+          delivery_latitude?: number | null
+          delivery_longitude?: number | null
           delivery_phone?: string
           delivery_zone?: string | null
           driver_id?: string | null
@@ -111,8 +160,10 @@ export type Database = {
           notes?: string | null
           payment_confirmation_sent?: boolean | null
           payment_method?: string
+          preferred_delivery_window?: string | null
           priority_level?: string | null
           receipt_sent?: boolean | null
+          service_area_validated?: boolean | null
           status?: string
           total_amount?: number
           tracking_notes?: string | null
@@ -122,10 +173,40 @@ export type Database = {
         }
         Relationships: []
       }
+      password_reset_tokens: {
+        Row: {
+          created_at: string
+          expires_at: string
+          id: string
+          token: string
+          used: boolean | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          expires_at: string
+          id?: string
+          token: string
+          used?: boolean | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          expires_at?: string
+          id?: string
+          token?: string
+          used?: boolean | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           address: string | null
           created_at: string
+          default_delivery_window: string | null
+          default_latitude: number | null
+          default_longitude: number | null
           first_name: string | null
           id: string
           last_name: string | null
@@ -135,6 +216,9 @@ export type Database = {
         Insert: {
           address?: string | null
           created_at?: string
+          default_delivery_window?: string | null
+          default_latitude?: number | null
+          default_longitude?: number | null
           first_name?: string | null
           id: string
           last_name?: string | null
@@ -144,6 +228,9 @@ export type Database = {
         Update: {
           address?: string | null
           created_at?: string
+          default_delivery_window?: string | null
+          default_latitude?: number | null
+          default_longitude?: number | null
           first_name?: string | null
           id?: string
           last_name?: string | null
@@ -152,12 +239,46 @@ export type Database = {
         }
         Relationships: []
       }
+      service_areas: {
+        Row: {
+          active: boolean | null
+          created_at: string
+          delivery_cost: number
+          id: string
+          name: string
+          polygon_coordinates: Json
+        }
+        Insert: {
+          active?: boolean | null
+          created_at?: string
+          delivery_cost?: number
+          id?: string
+          name: string
+          polygon_coordinates: Json
+        }
+        Update: {
+          active?: boolean | null
+          created_at?: string
+          delivery_cost?: number
+          id?: string
+          name?: string
+          polygon_coordinates?: Json
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
-      [_ in never]: never
+      calculate_delivery_cost: {
+        Args: { delivery_lat: number; delivery_lng: number }
+        Returns: number
+      }
+      validate_service_area: {
+        Args: { delivery_lat: number; delivery_lng: number }
+        Returns: boolean
+      }
     }
     Enums: {
       [_ in never]: never
