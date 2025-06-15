@@ -239,6 +239,40 @@ const Checkout = () => {
                 <span>Cash on Delivery</span>
               </label>
             </div>
+
+            {formData.paymentMethod === 'eft' && (
+              <div className="mt-4 p-4 bg-onolo-dark rounded-xl border border-onolo-orange">
+                <h3 className="text-onolo-orange font-semibold mb-3">Banking Details</h3>
+                <div className="space-y-2 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-onolo-gray">Bank:</span>
+                    <span>Standard Bank</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-onolo-gray">Account Name:</span>
+                    <span>Onolo Group (Pty) Ltd</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-onolo-gray">Account Number:</span>
+                    <span>012345678</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-onolo-gray">Branch Code:</span>
+                    <span>051001</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-onolo-gray">Reference:</span>
+                    <span>Your Order Number</span>
+                  </div>
+                </div>
+                <div className="mt-3 p-3 bg-onolo-orange bg-opacity-10 rounded-lg">
+                  <p className="text-xs text-onolo-orange">
+                    <strong>Important:</strong> Please send proof of payment (POP) to <br />
+                    <strong>info@onologroup.com</strong> with your order number as reference.
+                  </p>
+                </div>
+              </div>
+            )}
           </div>
 
           <div className="bg-onolo-dark-lighter rounded-2xl p-6">

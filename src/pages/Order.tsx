@@ -11,7 +11,7 @@ interface Product {
   size: string;
   description: string;
   price: number;
-  icon: string;
+  image: string;
 }
 
 const products: Product[] = [
@@ -21,7 +21,7 @@ const products: Product[] = [
     size: '9kg',
     description: "Small knee height bottle used for braai's, stoves & heaters. REFILL ONLY!",
     price: 344.00,
-    icon: '🔥'
+    image: '/lovable-uploads/f98a1122-5ed2-4266-9e70-c23cf4074c45.png'
   },
   {
     id: '19kg',
@@ -29,7 +29,7 @@ const products: Product[] = [
     size: '19kg',
     description: "Mid sized bottle used for braai's, stoves, heaters and small gas water heaters. REFILL ONLY!",
     price: 727.00,
-    icon: '🔥'
+    image: '/lovable-uploads/4de6ef66-00ba-4216-872f-a3f47fb75ab6.png'
   },
   {
     id: '48kg',
@@ -37,7 +37,7 @@ const products: Product[] = [
     size: '48kg',
     description: "Large bottle used for commercial applications, large gas water heaters and industrial use. REFILL ONLY!",
     price: 1855.00,
-    icon: '🔥'
+    image: '/lovable-uploads/fbf883ef-348c-4ef9-ab8c-73ca3e93ac2c.png'
   }
 ];
 
@@ -66,10 +66,8 @@ const Order = () => {
     const currentCartQuantity = getCartQuantity(product.id);
     
     if (currentCartQuantity > 0) {
-      // Update existing cart item
       updateQuantity(product.id, currentCartQuantity + quantity);
     } else {
-      // Add new item to cart
       for (let i = 0; i < quantity; i++) {
         addToCart({
           id: product.id,
@@ -82,7 +80,19 @@ const Order = () => {
     toast({
       title: "Added to cart",
       description: `${quantity} x ${product.name} added to your cart.`,
-      duration: 3000,
+    });
+  };
+
+  const handleUpdateCartQuantity = (productId: string, newQuantity: number) => {
+    if (newQuantity <= 0) {
+      updateQuantity(productId, 0);
+    } else {
+      updateQuantity(productId, newQuantity);
+    }
+    
+    toast({
+      title: "Cart updated",
+      description: "Product quantity updated in your cart.",
     });
   };
 
@@ -99,8 +109,12 @@ const Order = () => {
             return (
               <div key={product.id} className="bg-onolo-dark-lighter rounded-2xl p-6">
                 <div className="flex items-start space-x-4 mb-4">
-                  <div className="w-12 h-12 bg-onolo-orange rounded-xl flex items-center justify-center text-2xl">
-                    {product.icon}
+                  <div className="w-20 h-20 flex items-center justify-center">
+                    <img 
+                      src={product.image} 
+                      alt={product.name}
+                      className="w-full h-full object-contain"
+                    />
                   </div>
                   <div className="flex-1">
                     <h3 className="font-bold text-white text-lg mb-2">{product.name}</h3>
@@ -113,14 +127,30 @@ const Order = () => {
                     
                     {cartQuantity > 0 && (
                       <div className="bg-onolo-dark rounded-xl p-3 mb-4">
-                        <p className="text-sm text-onolo-gray">
-                          Currently in cart: <span className="text-onolo-orange font-semibold">{cartQuantity}</span>
-                        </p>
+                        <div className="flex items-center justify-between">
+                          <p className="text-sm text-onolo-gray">
+                            In cart: <span className="text-onolo-orange font-semibold">{cartQuantity}</span>
+                          </p>
+                          <div className="flex items-center space-x-2">
+                            <button
+                              onClick={() => handleUpdateCartQuantity(product.id, cartQuantity - 1)}
+                              className="w-6 h-6 bg-onolo-orange rounded-full flex items-center justify-center hover:bg-onolo-orange-dark transition-colors"
+                            >
+                              <Minus className="w-3 h-3" />
+                            </button>
+                            <button
+                              onClick={() => handleUpdateCartQuantity(product.id, cartQuantity + 1)}
+                              className="w-6 h-6 bg-onolo-orange rounded-full flex items-center justify-center hover:bg-onolo-orange-dark transition-colors"
+                            >
+                              <Plus className="w-3 h-3" />
+                            </button>
+                          </div>
+                        </div>
                       </div>
                     )}
                     
                     <div className="flex items-center space-x-4 mb-4">
-                      <span className="text-sm font-medium">Quantity:</span>
+                      <span className="text-sm font-medium">Add quantity:</span>
                       <div className="flex items-center space-x-3">
                         <button
                           onClick={() => updateLocalQuantity(product.id, quantity - 1)}
