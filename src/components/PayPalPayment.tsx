@@ -4,7 +4,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
-import { CreditCard, Loader2 } from 'lucide-react';
+import { CreditCard, Loader2, AlertTriangle } from 'lucide-react';
 
 interface PayPalPaymentProps {
   orderId: string;
@@ -26,6 +26,7 @@ const PayPalPayment: React.FC<PayPalPaymentProps> = ({
   const { user } = useAuth();
   const { toast } = useToast();
   const [isProcessing, setIsProcessing] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   const initiatePayPalPayment = async () => {
     if (!user) {
@@ -38,6 +39,7 @@ const PayPalPayment: React.FC<PayPalPaymentProps> = ({
     }
 
     setIsProcessing(true);
+    setError(null);
 
     try {
       console.log('Initiating PayPal payment for order:', orderId);
@@ -68,9 +70,11 @@ const PayPalPayment: React.FC<PayPalPaymentProps> = ({
       }
     } catch (error) {
       console.error('PayPal payment error:', error);
+      const errorMessage = error.message || 'Failed to initiate PayPal payment. Please try again or choose a different payment method.';
+      setError(errorMessage);
       toast({
         title: "Payment error",
-        description: "Failed to initiate PayPal payment. Please try again or choose a different payment method.",
+        description: errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -99,6 +103,15 @@ const PayPalPayment: React.FC<PayPalPaymentProps> = ({
           <span className="text-white">{customerEmail}</span>
         </div>
       </div>
+
+      {error && (
+        <div className="bg-red-500 bg-opacity-10 border border-red-500 rounded-lg p-4 mb-6">
+          <div className="flex items-center space-x-2">
+            <AlertTriangle className="w-5 h-5 text-red-500" />
+            <span className="text-red-400 text-sm">{error}</span>
+          </div>
+        </div>
+      )}
 
       <div className="bg-onolo-dark rounded-lg p-4 mb-6">
         <p className="text-sm text-onolo-gray mb-2">

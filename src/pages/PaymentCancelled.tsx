@@ -1,11 +1,15 @@
 
 import React from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { XCircle, ArrowLeft, RefreshCw } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 const PaymentCancelled = () => {
   const navigate = useNavigate();
+  const [searchParams] = useSearchParams();
+  
+  const orderId = searchParams.get('m_payment_id') || searchParams.get('order_id');
+  const paymentSource = searchParams.get('payment_source');
 
   return (
     <div className="min-h-screen bg-onolo-dark text-white p-6 flex items-center justify-center">
@@ -19,6 +23,18 @@ const PaymentCancelled = () => {
         <p className="text-onolo-gray mb-8">
           Your payment was cancelled. Your order is still pending and you can complete the payment anytime.
         </p>
+
+        {orderId && (
+          <div className="bg-onolo-dark-lighter rounded-xl p-4 mb-6">
+            <p className="text-sm text-onolo-gray mb-1">Order ID:</p>
+            <p className="font-mono text-onolo-orange">#{orderId.slice(0, 8)}</p>
+            {paymentSource && (
+              <p className="text-xs text-onolo-gray mt-2">
+                Payment method: {paymentSource === 'paypal' ? 'PayPal' : 'PayFast'}
+              </p>
+            )}
+          </div>
+        )}
 
         <div className="space-y-3">
           <Button

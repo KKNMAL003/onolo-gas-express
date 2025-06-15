@@ -23,6 +23,8 @@ async function getPayPalAccessToken() {
   });
 
   if (!response.ok) {
+    const errorText = await response.text();
+    console.error('PayPal token error:', errorText);
     throw new Error('Failed to get PayPal access token');
   }
 
@@ -42,17 +44,18 @@ async function createPayPalOrder(accessToken: string, amount: number, orderId: s
       purchase_units: [{
         reference_id: orderId,
         amount: {
-          currency_code: 'USD', // PayPal sandbox typically uses USD
+          currency_code: 'USD',
           value: (amount / 18).toFixed(2), // Convert ZAR to USD roughly for sandbox
         },
         description: `Onolo Group Order #${orderId.slice(0, 8)}`,
       }],
       application_context: {
-        return_url: `${origin}/payment-success?order_id=${orderId}`,
-        cancel_url: `${origin}/payment-cancelled?order_id=${orderId}`,
+        return_url: `${origin}/payment-success?order_id=${orderId}&payment_source=paypal`,
+        cancel_url: `${origin}/payment-cancelled?order_id=${orderId}&payment_source=paypal`,
         brand_name: 'Onolo Group',
         landing_page: 'BILLING',
         user_action: 'PAY_NOW',
+        shipping_preference: 'NO_SHIPPING'
       },
     }),
   });
@@ -60,7 +63,7 @@ async function createPayPalOrder(accessToken: string, amount: number, orderId: s
   if (!response.ok) {
     const errorText = await response.text();
     console.error('PayPal order creation failed:', errorText);
-    throw new Error('Failed to create PayPal order');
+    throw new Error(`Failed to create PayPal order: ${errorText}`);
   }
 
   return await response.json();

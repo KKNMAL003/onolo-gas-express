@@ -17,7 +17,9 @@ const PaymentSuccess = () => {
     });
   }, [toast]);
 
-  const orderId = searchParams.get('m_payment_id');
+  // Get order ID from either PayFast (m_payment_id) or PayPal (order_id) parameters
+  const orderId = searchParams.get('m_payment_id') || searchParams.get('order_id');
+  const paymentSource = searchParams.get('payment_source');
 
   return (
     <div className="min-h-screen bg-onolo-dark text-white p-6 flex items-center justify-center">
@@ -36,6 +38,11 @@ const PaymentSuccess = () => {
           <div className="bg-onolo-dark-lighter rounded-xl p-4 mb-6">
             <p className="text-sm text-onolo-gray mb-1">Order ID:</p>
             <p className="font-mono text-onolo-orange">#{orderId.slice(0, 8)}</p>
+            {paymentSource && (
+              <p className="text-xs text-onolo-gray mt-2">
+                Payment via: {paymentSource === 'paypal' ? 'PayPal' : 'PayFast'}
+              </p>
+            )}
           </div>
         )}
 

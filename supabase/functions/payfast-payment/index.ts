@@ -38,14 +38,10 @@ serve(async (req) => {
     const { orderId, amount, customerName, customerEmail, deliveryAddress } = await req.json();
     logStep("Payment request received", { orderId, amount, customerEmail });
 
-    // PayFast configuration
-    const merchantId = Deno.env.get("PAYFAST_MERCHANT_ID");
-    const merchantKey = Deno.env.get("PAYFAST_MERCHANT_KEY");
-    const passphrase = Deno.env.get("PAYFAST_PASSPHRASE");
-
-    if (!merchantId || !merchantKey) {
-      throw new Error("PayFast credentials not configured");
-    }
+    // PayFast test credentials
+    const merchantId = "10004002";
+    const merchantKey = "q1cd2rdny4a53";
+    const passphrase = "payfast";
 
     // Create PayFast payment data
     const paymentData = {
@@ -74,8 +70,7 @@ serve(async (req) => {
       
       const stringToSign = passphrase ? `${sortedData}&passphrase=${passphrase}` : sortedData;
       
-      // In a real implementation, you'd use crypto to generate MD5 hash
-      // For now, we'll use a simple hash simulation
+      // Simple hash simulation for testing
       return btoa(stringToSign).substring(0, 32);
     };
 
@@ -93,13 +88,11 @@ serve(async (req) => {
 
     logStep("Order updated to pending payment", { orderId });
 
-    // Return PayFast form data for client-side submission
+    // Return PayFast form data for client-side submission (using sandbox)
     return new Response(JSON.stringify({ 
       success: true,
       paymentData,
-      paymentUrl: Deno.env.get("PAYFAST_SANDBOX") === "true" 
-        ? "https://sandbox.payfast.co.za/eng/process" 
-        : "https://www.payfast.co.za/eng/process"
+      paymentUrl: "https://sandbox.payfast.co.za/eng/process"
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
       status: 200,
