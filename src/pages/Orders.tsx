@@ -3,9 +3,8 @@ import React, { useEffect, useState } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import OrderStatusTracker from '@/components/OrderStatusTracker';
+import OrderCard from '@/components/OrderCard';
 
 interface Order {
   id: string;
@@ -103,46 +102,6 @@ const Orders = () => {
     }
   };
 
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'pending': return 'bg-yellow-500';
-      case 'order_received': return 'bg-blue-500';
-      case 'order_confirmed': return 'bg-blue-600';
-      case 'scheduled_for_delivery': return 'bg-purple-500';
-      case 'driver_dispatched': return 'bg-orange-500';
-      case 'out_for_delivery': return 'bg-orange-600';
-      case 'delivered': return 'bg-green-500';
-      case 'cancelled': return 'bg-red-500';
-      default: return 'bg-gray-500';
-    }
-  };
-
-  const formatStatus = (status: string) => {
-    return status.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase());
-  };
-
-  const getPaymentMethodDisplay = (method: string) => {
-    switch (method) {
-      case 'cash_on_delivery': return 'Cash on Delivery';
-      case 'eft': return 'EFT';
-      case 'card': return 'Card';
-      case 'payfast': return 'PayFast';
-      default: return method;
-    }
-  };
-
-  const getStatusEstimate = (status: string) => {
-    switch (status) {
-      case 'order_received': return 'Processing within 2-4 hours';
-      case 'order_confirmed': return 'Scheduling within 4-8 hours';
-      case 'scheduled_for_delivery': return 'Usually within 24-48 hours';
-      case 'driver_dispatched': return 'Driver en route, 2-6 hours';
-      case 'out_for_delivery': return 'Delivery within 1-3 hours';
-      case 'delivered': return 'Completed';
-      default: return null;
-    }
-  };
-
   if (!user) {
     return (
       <div className="min-h-screen bg-onolo-dark text-white p-6 flex items-center justify-center">
@@ -185,95 +144,13 @@ const Orders = () => {
         ) : (
           <div className="space-y-6">
             {orders.map((order) => (
-              <div key={order.id} className="bg-onolo-dark-lighter rounded-2xl p-6">
-                <div className="flex items-center justify-between mb-4">
-                  <h3 className="font-bold text-white">
-                    Order #{order.id.slice(0, 8)}
-                  </h3>
-                  <div className="flex items-center space-x-2">
-                    {order.priority_level === 'urgent' && (
-                      <Badge className="bg-red-500 text-white">Urgent</Badge>
-                    )}
-                    <Badge className={getStatusColor(order.status)}>
-                      {formatStatus(order.status)}
-                    </Badge>
-                  </div>
-                </div>
-
-                <Button
-                  onClick={() => toggleOrderExpansion(order.id)}
-                  variant="outline"
-                  size="sm"
-                  className="mb-4 w-full"
-                >
-                  {expandedOrder === order.id ? 'Hide Details' : 'View Tracking Details'}
-                </Button>
-
-                {expandedOrder === order.id && (
-                  <OrderStatusTracker
-                    status={order.status}
-                    estimatedTimeRange={getStatusEstimate(order.status)}
-                    createdAt={order.created_at}
-                  />
-                )}
-
-                <div className="space-y-2 mb-4">
-                  {order.order_items.map((item, index) => (
-                    <div key={index} className="flex justify-between text-sm">
-                      <span className="text-onolo-gray">
-                        {item.product_name} x{item.quantity}
-                      </span>
-                      <span className="text-white">
-                        R {(item.unit_price * item.quantity).toFixed(2)}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-
-                <div className="flex justify-between items-center mb-4">
-                  <span className="text-onolo-gray text-sm">Total</span>
-                  <span className="text-onolo-orange font-bold text-lg">
-                    R {order.total_amount.toFixed(2)}
-                  </span>
-                </div>
-
-                <div className="space-y-2 text-sm">
-                  <div className="flex justify-between">
-                    <span className="text-onolo-gray">Payment:</span>
-                    <span className="text-white">{getPaymentMethodDisplay(order.payment_method)}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-onolo-gray">Delivery:</span>
-                    <span className="text-white">{order.delivery_address}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-onolo-gray">Date:</span>
-                    <span className="text-white">
-                      {new Date(order.created_at).toLocaleDateString()}
-                    </span>
-                  </div>
-                  {order.estimated_delivery_start && order.estimated_delivery_end && (
-                    <div className="flex justify-between">
-                      <span className="text-onolo-gray">Estimated Delivery:</span>
-                      <span className="text-white text-xs">
-                        {new Date(order.estimated_delivery_start).toLocaleDateString()} - 
-                        {new Date(order.estimated_delivery_end).toLocaleDateString()}
-                      </span>
-                    </div>
-                  )}
-                </div>
-
-                {(order.status === 'pending' || order.status === 'order_received') && (
-                  <Button
-                    onClick={() => cancelOrder(order.id)}
-                    variant="destructive"
-                    size="sm"
-                    className="w-full mt-4"
-                  >
-                    Cancel Order
-                  </Button>
-                )}
-              </div>
+              <OrderCard
+                key={order.id}
+                order={order}
+                isExpanded={expandedOrder === order.id}
+                onToggleExpansion={toggleOrderExpansion}
+                onCancelOrder={cancelOrder}
+              />
             ))}
           </div>
         )}
