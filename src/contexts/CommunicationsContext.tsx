@@ -47,6 +47,7 @@ export const CommunicationsProvider: React.FC<{ children: ReactNode }> = ({ chil
 
       if (error) throw error;
       setCommunications(data || []);
+      console.log('Fetched communications:', data);
     } catch (error) {
       console.error('Error fetching communications:', error);
       toast({
@@ -90,9 +91,12 @@ export const CommunicationsProvider: React.FC<{ children: ReactNode }> = ({ chil
             }
           }
         )
-        .subscribe((status, err) => {
-          if (status === 'SUBSCRIBE_FAILED') {
-            console.error('Failed to subscribe to communications channel', err);
+        .subscribe((status) => {
+          console.log('Communications subscription status:', status);
+          if (status === 'SUBSCRIBED') {
+            console.log('Successfully subscribed to communications changes');
+          } else if (status === 'CHANNEL_ERROR') {
+            console.error('Failed to subscribe to communications channel');
           }
         });
 
@@ -117,16 +121,25 @@ export const CommunicationsProvider: React.FC<{ children: ReactNode }> = ({ chil
     }
 
     try {
-      const { error } = await supabase
+      console.log('Attempting to send message:', { subject, message, user_id: user.id });
+      
+      const { data, error } = await supabase
         .from('communication_logs')
         .insert({
           user_id: user.id,
           log_type: 'user_message',
           subject: subject.trim(),
           message: message.trim()
-        });
+        })
+        .select()
+        .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error inserting message:', error);
+        throw error;
+      }
+
+      console.log('Message saved successfully:', data);
 
       toast({
         title: "Message sent",
