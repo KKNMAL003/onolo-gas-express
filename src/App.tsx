@@ -7,6 +7,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
 import { CartProvider } from "./contexts/CartContext";
 import { CommunicationsProvider } from "./contexts/CommunicationsContext";
+import AuthGuard from "./components/AuthGuard";
 import Layout from "./components/Layout";
 import Welcome from "./components/Welcome";
 import Home from "./pages/Home";
@@ -35,18 +36,60 @@ const App = () => (
             <BrowserRouter>
               <Routes>
                 <Route path="/welcome" element={<Welcome />} />
-                <Route path="/auth" element={<Auth />} />
-                <Route path="/profile" element={<Profile />} />
+                <Route 
+                  path="/auth" 
+                  element={
+                    <AuthGuard requireAuth={false}>
+                      <Auth />
+                    </AuthGuard>
+                  } 
+                />
+                <Route 
+                  path="/profile" 
+                  element={
+                    <AuthGuard>
+                      <Profile />
+                    </AuthGuard>
+                  } 
+                />
                 <Route path="/payment-success" element={<PaymentSuccess />} />
                 <Route path="/payment-cancelled" element={<PaymentCancelled />} />
                 <Route path="/" element={<Layout />}>
                   <Route index element={<Home />} />
-                  <Route path="/order" element={<Order />} />
+                  <Route 
+                    path="/order" 
+                    element={
+                      <AuthGuard>
+                        <Order />
+                      </AuthGuard>
+                    } 
+                  />
                   <Route path="/cart" element={<Cart />} />
-                  <Route path="/chat" element={<Chat />} />
+                  <Route 
+                    path="/chat" 
+                    element={
+                      <AuthGuard>
+                        <Chat />
+                      </AuthGuard>
+                    } 
+                  />
                   <Route path="/menu" element={<Menu />} />
-                  <Route path="/checkout" element={<Checkout />} />
-                  <Route path="/orders" element={<Orders />} />
+                  <Route 
+                    path="/checkout" 
+                    element={
+                      <AuthGuard>
+                        <Checkout />
+                      </AuthGuard>
+                    } 
+                  />
+                  <Route 
+                    path="/orders" 
+                    element={
+                      <AuthGuard>
+                        <Orders />
+                      </AuthGuard>
+                    } 
+                  />
                 </Route>
                 <Route path="*" element={<NotFound />} />
               </Routes>

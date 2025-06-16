@@ -8,11 +8,11 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import DeliveryPreferences from '@/components/DeliveryPreferences';
-import { User, Save, X, Mail } from 'lucide-react';
+import { User, Save, X, Mail, LogOut } from 'lucide-react';
 
 const Profile = () => {
   const navigate = useNavigate();
-  const { user, profile, refreshProfile } = useAuth();
+  const { user, profile, refreshProfile, signOut } = useAuth();
   const { toast } = useToast();
   const [isLoading, setIsLoading] = useState(false);
   const [formData, setFormData] = useState({
@@ -24,6 +24,11 @@ const Profile = () => {
 
   const handleClose = () => {
     navigate('/');
+  };
+
+  const handleSignOut = async () => {
+    await signOut();
+    navigate('/auth');
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -76,7 +81,10 @@ const Profile = () => {
       <div className="min-h-screen bg-onolo-dark text-white p-6 flex items-center justify-center">
         <div className="text-center">
           <h2 className="text-xl font-semibold mb-2">Please sign in</h2>
-          <p className="text-onolo-gray">You need to be signed in to view your profile.</p>
+          <p className="text-onolo-gray mb-4">You need to be signed in to view your profile.</p>
+          <Button onClick={() => navigate('/auth')} className="bg-onolo-orange hover:bg-onolo-orange-dark">
+            Sign In
+          </Button>
         </div>
       </div>
     );
@@ -182,6 +190,19 @@ const Profile = () => {
 
         {/* Delivery Preferences */}
         <DeliveryPreferences />
+
+        {/* Sign Out Section */}
+        <div className="bg-onolo-dark-lighter rounded-2xl p-6">
+          <h2 className="text-lg font-semibold mb-4">Account Actions</h2>
+          <Button
+            onClick={handleSignOut}
+            variant="outline"
+            className="w-full border-red-500 text-red-500 hover:bg-red-500 hover:text-white"
+          >
+            <LogOut className="w-4 h-4 mr-2" />
+            Sign Out
+          </Button>
+        </div>
       </div>
     </div>
   );

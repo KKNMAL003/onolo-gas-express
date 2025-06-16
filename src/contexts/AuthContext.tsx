@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, Session } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -177,8 +178,16 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   const signOut = async () => {
-    await supabase.auth.signOut();
-    setProfile(null);
+    console.log('Signing out user');
+    const { error } = await supabase.auth.signOut();
+    if (error) {
+      console.error('Error signing out:', error);
+    } else {
+      console.log('Successfully signed out');
+      setUser(null);
+      setSession(null);
+      setProfile(null);
+    }
   };
 
   const updateProfile = async (updates: Partial<Profile>) => {
