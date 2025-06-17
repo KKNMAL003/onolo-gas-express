@@ -65,7 +65,7 @@ export const useOrderCreationCore = () => {
       console.log('Location data:', locationData);
       console.log('Delivery slot:', deliverySlot);
       
-      // Use lowercase 'pending' status for all payment methods - matches database constraint
+      // Use lowercase 'pending' status - now matches database constraint
       const initialStatus = 'pending';
       
       // Validate required fields
@@ -87,7 +87,7 @@ export const useOrderCreationCore = () => {
         payment_method: formData.paymentMethod,
         customer_name: formData.name.trim(),
         customer_email: formData.email.trim(),
-        status: initialStatus,
+        status: initialStatus, // This now matches the database constraint
         preferred_delivery_window: deliverySlot.timeWindow,
         delivery_date: deliverySlot.date,
         delivery_latitude: locationData.latitude,

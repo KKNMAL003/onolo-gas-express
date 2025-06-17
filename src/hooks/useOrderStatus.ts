@@ -4,6 +4,26 @@ import { supabase } from '@/integrations/supabase/client';
 export const useOrderStatus = () => {
   const updateOrderStatus = async (orderId: string, status: string, reason?: string) => {
     try {
+      // Ensure status values match the database constraint
+      const validStatuses = [
+        'pending',
+        'order_received', 
+        'order_confirmed',
+        'preparing',
+        'scheduled_for_delivery',
+        'driver_dispatched', 
+        'out_for_delivery',
+        'delivered',
+        'cancelled',
+        'confirmed',
+        'payment_failed'
+      ];
+
+      if (!validStatuses.includes(status)) {
+        console.error('Invalid status value:', status);
+        throw new Error(`Invalid status: ${status}`);
+      }
+
       const { error } = await supabase
         .from('orders')
         .update({ 
