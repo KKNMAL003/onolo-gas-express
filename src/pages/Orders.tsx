@@ -1,7 +1,10 @@
 import React, { useEffect, useState } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import OrderCard from '@/components/OrderCard';
+import MapboxMap from '@/components/MapboxMap';
+import { Map, List } from 'lucide-react';
 
 interface Order {
   id: string;
@@ -137,9 +140,18 @@ const Orders = () => {
     );
   }
 
+  // Transform orders for map component
+  const deliveriesForMap = orders.map(order => ({
+    id: order.id,
+    address: order.delivery_address,
+    status: order.status,
+    customer_name: order.customer_name,
+    coordinates: undefined // Will be geocoded by map component
+  }));
+
   return (
-    <div className="min-h-screen bg-onolo-dark text-white p-6">
-      <div className="max-w-md mx-auto">
+    <div className="min-h-screen bg-onolo-dark text-white">
+      <div className="max-w-6xl mx-auto p-6">
         <h1 className="text-2xl font-bold mb-8">My Deliveries</h1>
 
         {orders.length === 0 ? (
@@ -149,21 +161,98 @@ const Orders = () => {
             <p className="text-onolo-gray mb-6">You don't have any deliveries assigned yet</p>
           </div>
         ) : (
-          <div className="space-y-6">
-            {orders.map((order) => (
-              <div key={order.id}>
-                <OrderCard
-                  order={order}
-                  isExpanded={expandedOrder === order.id}
-                  onToggleExpansion={toggleOrderExpansion}
-                  onCancelOrder={() => {}} // Drivers can't cancel orders
-                  onRescheduleSuccess={() => {}}
-                  isDriverView={true}
-                  onStatusUpdate={updateOrderStatus}
+          <Tabs defaultValue="map" className="w-full">
+            <TabsList className="grid w-full grid-cols-2 mb-6">
+              <TabsTrigger value="map" className="flex items-center space-x-2">
+                <Map className="w-4 h-4" />
+                <span>Map View</span>
+              </TabsTrigger>
+              <TabsTrigger value="list" className="flex items-center space-x-2">
+                <List className="w-4 h-4" />
+                <span>List View</span>
+              </TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="map" className="mt-0">
+              <div className="h-[600px] w-full mb-6">
+                <MapboxMap
+                  deliveries={deliveriesForMap}
+                  className="w-full h-full"
+                  showNavigation={true}
                 />
               </div>
-            ))}
-          </div>
+              
+              {/* Quick status updates below map */}
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                {orders.map((order) => (
+                  <div key={order.id} className="bg-onolo-dark-lighter rounded-lg p-4 border border-onolo-dark-lighter">
+                    <div className="flex items-center justify-between mb-2">
+                      <h3 className="font-semibold text-sm">{order.customer_name}</h3>
+                      <span className={`px-2 py-1 rounded text-xs font-medium ${
+                        order.status === 'scheduled_for_delivery' ? 'bg-yellow-500/20 text-yellow-400' :
+                        order.status === 'driver_dispatched' ? 'bg-blue-500/20 text-blue-400' :
+                        order.status === 'out_for_delivery' ? 'bg-orange-500/20 text-orange-400' :
+                        order.status === 'delivered' ? 'bg-green-500/20 text-green-400' :
+                        'bg-gray-500/20 text-gray-400'
+                      }`}>
+                        {order.status.replace(/_/g, ' ')}
+                      </span>
+                    </div>
+                    <p className="text-xs text-onolo-gray mb-2">{order.delivery_address}</p>
+                    <div className="flex space-x-2">
+                      {order.status === 'scheduled_for_delivery' && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => updateOrderStatus(order.id, 'driver_dispatched')}
+                          className="text-xs"
+                        >
+                          Accept
+                        </Button>
+                      )}
+                      {order.status === 'driver_dispatched' && (
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => updateOrderStatus(order.id, 'out_for_delivery')}
+                          className="text-xs"
+                        >
+                          Start Delivery
+                        </Button>
+                      )}
+                      {order.status === 'out_for_delivery' && (
+                        <Button
+                          size="sm"
+                          onClick={() => updateOrderStatus(order.id, 'delivered')}
+                          className="text-xs bg-green-600 hover:bg-green-700"
+                        >
+                          Mark Delivered
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </TabsContent>
+
+            <TabsContent value="list" className="mt-0">
+              <div className="space-y-6 max-w-2xl mx-auto">
+                {orders.map((order) => (
+                  <div key={order.id}>
+                    <OrderCard
+                      order={order}
+                      isExpanded={expandedOrder === order.id}
+                      onToggleExpansion={toggleOrderExpansion}
+                      onCancelOrder={() => {}} // Drivers can't cancel orders
+                      onRescheduleSuccess={() => {}}
+                      isDriverView={true}
+                      onStatusUpdate={updateOrderStatus}
+                    />
+                  </div>
+                ))}
+              </div>
+            </TabsContent>
+          </Tabs>
         )}
       </div>
     </div>
