@@ -31,6 +31,8 @@ interface OrderCardProps {
   onToggleExpansion: (orderId: string) => void;
   onCancelOrder: (orderId: string) => void;
   onRescheduleSuccess: () => void;
+  isDriverView?: boolean;
+  onStatusUpdate?: (orderId: string, newStatus: string) => Promise<void>;
 }
 
 const OrderCard: React.FC<OrderCardProps> = ({
@@ -38,7 +40,9 @@ const OrderCard: React.FC<OrderCardProps> = ({
   isExpanded,
   onToggleExpansion,
   onCancelOrder,
-  onRescheduleSuccess
+  onRescheduleSuccess,
+  isDriverView = false,
+  onStatusUpdate
 }) => {
   const getStatusColor = (status: string) => {
     switch (status) {
@@ -104,11 +108,47 @@ const OrderCard: React.FC<OrderCardProps> = ({
       )}
 
       <OrderDetails order={order} />
-      <OrderActions 
-        order={order} 
-        onCancelOrder={onCancelOrder} 
-        onRescheduleSuccess={onRescheduleSuccess}
-      />
+      
+      {isDriverView && onStatusUpdate ? (
+        <div className="mt-4 space-y-2">
+          <h4 className="text-sm font-semibold text-onolo-gray">Update Status:</h4>
+          <div className="flex flex-wrap gap-2">
+            {order.status === 'scheduled_for_delivery' && (
+              <Button
+                size="sm"
+                onClick={() => onStatusUpdate(order.id, 'driver_dispatched')}
+                className="bg-onolo-orange hover:bg-onolo-orange-dark text-xs"
+              >
+                Mark Dispatched
+              </Button>
+            )}
+            {order.status === 'driver_dispatched' && (
+              <Button
+                size="sm"
+                onClick={() => onStatusUpdate(order.id, 'out_for_delivery')}
+                className="bg-onolo-orange hover:bg-onolo-orange-dark text-xs"
+              >
+                Out for Delivery
+              </Button>
+            )}
+            {order.status === 'out_for_delivery' && (
+              <Button
+                size="sm"
+                onClick={() => onStatusUpdate(order.id, 'delivered')}
+                className="bg-green-600 hover:bg-green-700 text-xs"
+              >
+                Mark Delivered
+              </Button>
+            )}
+          </div>
+        </div>
+      ) : (
+        <OrderActions 
+          order={order} 
+          onCancelOrder={onCancelOrder} 
+          onRescheduleSuccess={onRescheduleSuccess}
+        />
+      )}
     </div>
   );
 };
