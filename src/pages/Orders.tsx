@@ -1,10 +1,10 @@
 import React, { useEffect, useState } from 'react';
+import { useAuth } from '@/contexts/AuthContext';
+import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import OrderCard from '@/components/OrderCard';
-import MapboxMap from '@/components/MapboxMap';
-import { Map, List } from 'lucide-react';
+import { sendStatusUpdateEmail, sendInvoiceEmail } from '@/utils/emailUtils';
 
 interface Order {
   id: string;
@@ -30,66 +30,89 @@ interface Order {
 }
 
 const Orders = () => {
+  const { user } = useAuth();
   const { toast } = useToast();
   const [orders, setOrders] = useState<Order[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [expandedOrder, setExpandedOrder] = useState<string | null>(null);
 
   useEffect(() => {
-    fetchOrders();
-  }, []);
+    if (user) {
+      fetchOrders();
+      
+      // Set up real-time subscription for order status changes
+      const channel = supabase
+        .channel('orders-changes')
+        .on(
+          'postgres_changes',
+          {
+            event: '*', // Listen to all changes (INSERT, UPDATE, DELETE)
+            schema: 'public',
+            table: 'orders',
+            filter: `user_id=eq.${user.id}` // Only listen to changes for this user's orders
+          },
+          (payload) => {
+            console.log('Real-time order update received:', payload);
+            
+            if (payload.eventType === 'UPDATE') {
+              const updatedOrder = payload.new as any;
+              setOrders(prevOrders => 
+                prevOrders.map(order => 
+                  order.id === updatedOrder.id 
+                    ? { ...order, ...updatedOrder }
+                    : order
+                )
+              );
+              
+              // Show toast notification for status changes
+              if (payload.old?.status !== updatedOrder.status) {
+                toast({
+                  title: "Order Status Updated",
+                  description: `Order #${updatedOrder.id.slice(0, 8)} status changed to ${updatedOrder.status.replace(/_/g, ' ')}`,
+                });
+              }
+            } else if (payload.eventType === 'INSERT') {
+              // Handle new orders (if needed)
+              fetchOrders(); // Refresh to get complete order data with items
+            } else if (payload.eventType === 'DELETE') {
+              const deletedOrder = payload.old as any;
+              setOrders(prevOrders => 
+                prevOrders.filter(order => order.id !== deletedOrder.id)
+              );
+            }
+          }
+        )
+        .subscribe();
+
+      // Cleanup subscription on unmount
+      return () => {
+        supabase.removeChannel(channel);
+      };
+    }
+  }, [user, toast]);
 
   const fetchOrders = async () => {
     try {
-      // Mock data for driver orders - in real implementation this would filter by driver_id
-      const mockOrders = [
-        {
-          id: '550e8400-e29b-41d4-a716-446655440000',
-          status: 'scheduled_for_delivery',
-          total_amount: 89.99,
-          delivery_address: '123 Main St, Cape Town, 8001',
-          payment_method: 'card',
-          created_at: new Date().toISOString(),
-          priority_level: 'high',
-          estimated_delivery_start: '2024-01-15T10:00:00Z',
-          estimated_delivery_end: '2024-01-15T12:00:00Z',
-          delivery_date: '2024-01-15',
-          preferred_delivery_window: 'morning',
-          customer_name: 'John Smith',
-          customer_email: 'john.smith@email.com',
-          payment_confirmation_sent: true,
-          receipt_sent: false,
-          order_items: [
-            { product_name: '9kg Gas Cylinder', quantity: 1, unit_price: 89.99 }
-          ]
-        },
-        {
-          id: '550e8400-e29b-41d4-a716-446655440001',
-          status: 'driver_dispatched',
-          total_amount: 179.98,
-          delivery_address: '456 Oak Ave, Stellenbosch, 7600',
-          payment_method: 'eft',
-          created_at: new Date(Date.now() - 86400000).toISOString(),
-          priority_level: 'normal',
-          estimated_delivery_start: '2024-01-15T14:00:00Z',
-          estimated_delivery_end: '2024-01-15T16:00:00Z',
-          delivery_date: '2024-01-15',
-          preferred_delivery_window: 'afternoon',
-          customer_name: 'Sarah Johnson',
-          customer_email: 'sarah.johnson@email.com',
-          payment_confirmation_sent: true,
-          receipt_sent: false,
-          order_items: [
-            { product_name: '9kg Gas Cylinder', quantity: 2, unit_price: 89.99 }
-          ]
-        }
-      ];
-      setOrders(mockOrders);
+      const { data, error } = await supabase
+        .from('orders')
+        .select(`
+          *,
+          order_items (
+            product_name,
+            quantity,
+            unit_price
+          )
+        `)
+        .eq('user_id', user?.id)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setOrders(data || []);
     } catch (error) {
       console.error('Error fetching orders:', error);
       toast({
-        title: "Error loading deliveries",
-        description: "Failed to load delivery orders. Please try again.",
+        title: "Error loading orders",
+        description: "Failed to load your orders. Please try again.",
         variant: "destructive",
       });
     } finally {
@@ -105,29 +128,75 @@ const Orders = () => {
     }
   };
 
-  const updateOrderStatus = async (orderId: string, newStatus: string) => {
+  const cancelOrder = async (orderId: string) => {
     try {
-      // In real implementation, this would update via API
+      const { error } = await supabase
+        .from('orders')
+        .update({ status: 'cancelled', updated_by: 'customer' })
+        .eq('id', orderId);
+
+      if (error) throw error;
+
       setOrders(orders.map(order => 
         order.id === orderId 
-          ? { ...order, status: newStatus }
+          ? { ...order, status: 'cancelled' }
           : order
       ));
 
       toast({
-        title: "Status Updated",
-        description: `Delivery status updated to ${newStatus.replace(/_/g, ' ')}`,
+        title: "Order cancelled",
+        description: "Your order has been successfully cancelled.",
       });
     } catch (error) {
-      console.error('Error updating order status:', error);
+      console.error('Error cancelling order:', error);
       toast({
-        title: "Error updating status",
-        description: "Failed to update delivery status. Please try again.",
+        title: "Error cancelling order",
+        description: "Failed to cancel the order. Please try again.",
         variant: "destructive",
       });
     }
   };
 
+  const handleRescheduleSuccess = () => {
+    fetchOrders(); // Refresh orders to show updated delivery schedule
+  };
+
+  const handleResendEmail = async (order: Order, type: 'status' | 'invoice') => {
+    try {
+      let result;
+      if (type === 'status') {
+        result = await sendStatusUpdateEmail(order.id, order.customer_email, order.customer_name);
+      } else {
+        result = await sendInvoiceEmail(order.id, order.customer_email, order.customer_name);
+      }
+
+      if (result.success) {
+        toast({
+          title: "Email sent",
+          description: `${type === 'status' ? 'Status update' : 'Invoice'} email has been sent successfully.`,
+        });
+      } else {
+        throw new Error('Failed to send email');
+      }
+    } catch (error) {
+      toast({
+        title: "Error sending email",
+        description: `Failed to send ${type} email. Please try again.`,
+        variant: "destructive",
+      });
+    }
+  };
+
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-onolo-dark text-white p-6 flex items-center justify-center">
+        <div className="text-center">
+          <h2 className="text-xl font-semibold mb-2">Please sign in</h2>
+          <p className="text-onolo-gray">You need to be signed in to view your orders.</p>
+        </div>
+      </div>
+    );
+  }
 
   if (isLoading) {
     return (
@@ -140,119 +209,70 @@ const Orders = () => {
     );
   }
 
-  // Transform orders for map component
-  const deliveriesForMap = orders.map(order => ({
-    id: order.id,
-    address: order.delivery_address,
-    status: order.status,
-    customer_name: order.customer_name,
-    coordinates: undefined // Will be geocoded by map component
-  }));
-
   return (
-    <div className="min-h-screen bg-onolo-dark text-white">
-      <div className="max-w-6xl mx-auto p-6">
-        <h1 className="text-2xl font-bold mb-8">My Deliveries</h1>
+    <div className="min-h-screen bg-onolo-dark text-white p-6">
+      <div className="max-w-md mx-auto">
+        <h1 className="text-2xl font-bold mb-8">My Orders</h1>
 
         {orders.length === 0 ? (
           <div className="text-center py-12">
-            <div className="text-6xl mb-4">🚚</div>
-            <h3 className="text-xl font-semibold mb-2">No deliveries assigned</h3>
-            <p className="text-onolo-gray mb-6">You don't have any deliveries assigned yet</p>
+            <div className="text-6xl mb-4">📦</div>
+            <h3 className="text-xl font-semibold mb-2">No orders yet</h3>
+            <p className="text-onolo-gray mb-6">You haven't placed any orders yet</p>
+            <Button
+              onClick={() => window.location.href = '/order'}
+              className="bg-onolo-orange hover:bg-onolo-orange-dark"
+            >
+              Start Shopping
+            </Button>
           </div>
         ) : (
-          <Tabs defaultValue="map" className="w-full">
-            <TabsList className="grid w-full grid-cols-2 mb-6">
-              <TabsTrigger value="map" className="flex items-center space-x-2">
-                <Map className="w-4 h-4" />
-                <span>Map View</span>
-              </TabsTrigger>
-              <TabsTrigger value="list" className="flex items-center space-x-2">
-                <List className="w-4 h-4" />
-                <span>List View</span>
-              </TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="map" className="mt-0">
-              <div className="h-[600px] w-full mb-6">
-                <MapboxMap
-                  deliveries={deliveriesForMap}
-                  className="w-full h-full"
-                  showNavigation={true}
+          <div className="space-y-6">
+            {orders.map((order) => (
+              <div key={order.id}>
+                <OrderCard
+                  order={order}
+                  isExpanded={expandedOrder === order.id}
+                  onToggleExpansion={toggleOrderExpansion}
+                  onCancelOrder={cancelOrder}
+                  onRescheduleSuccess={handleRescheduleSuccess}
                 />
-              </div>
-              
-              {/* Quick status updates below map */}
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {orders.map((order) => (
-                  <div key={order.id} className="bg-onolo-dark-lighter rounded-lg p-4 border border-onolo-dark-lighter">
-                    <div className="flex items-center justify-between mb-2">
-                      <h3 className="font-semibold text-sm">{order.customer_name}</h3>
-                      <span className={`px-2 py-1 rounded text-xs font-medium ${
-                        order.status === 'scheduled_for_delivery' ? 'bg-yellow-500/20 text-yellow-400' :
-                        order.status === 'driver_dispatched' ? 'bg-blue-500/20 text-blue-400' :
-                        order.status === 'out_for_delivery' ? 'bg-orange-500/20 text-orange-400' :
-                        order.status === 'delivered' ? 'bg-green-500/20 text-green-400' :
-                        'bg-gray-500/20 text-gray-400'
-                      }`}>
-                        {order.status.replace(/_/g, ' ')}
-                      </span>
-                    </div>
-                    <p className="text-xs text-onolo-gray mb-2">{order.delivery_address}</p>
-                    <div className="flex space-x-2">
-                      {order.status === 'scheduled_for_delivery' && (
+                
+                {/* Email Actions */}
+                {expandedOrder === order.id && (
+                  <div className="mt-4 p-4 bg-onolo-dark-lighter rounded-lg border-t border-onolo-gray">
+                    <h4 className="text-sm font-semibold mb-3 text-onolo-gray">Email Actions</h4>
+                    <div className="flex flex-wrap gap-2">
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        onClick={() => handleResendEmail(order, 'status')}
+                        className="text-xs"
+                      >
+                        Resend Status Email
+                      </Button>
+                      
+                      {order.status === 'delivered' && (
                         <Button
                           size="sm"
                           variant="outline"
-                          onClick={() => updateOrderStatus(order.id, 'driver_dispatched')}
+                          onClick={() => handleResendEmail(order, 'invoice')}
                           className="text-xs"
                         >
-                          Accept
-                        </Button>
-                      )}
-                      {order.status === 'driver_dispatched' && (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => updateOrderStatus(order.id, 'out_for_delivery')}
-                          className="text-xs"
-                        >
-                          Start Delivery
-                        </Button>
-                      )}
-                      {order.status === 'out_for_delivery' && (
-                        <Button
-                          size="sm"
-                          onClick={() => updateOrderStatus(order.id, 'delivered')}
-                          className="text-xs bg-green-600 hover:bg-green-700"
-                        >
-                          Mark Delivered
+                          Resend Invoice
                         </Button>
                       )}
                     </div>
+                    
+                    <div className="mt-2 text-xs text-onolo-gray">
+                      <p>Confirmation sent: {order.payment_confirmation_sent ? '✓' : '✗'}</p>
+                      <p>Invoice sent: {order.receipt_sent ? '✓' : '✗'}</p>
+                    </div>
                   </div>
-                ))}
+                )}
               </div>
-            </TabsContent>
-
-            <TabsContent value="list" className="mt-0">
-              <div className="space-y-6 max-w-2xl mx-auto">
-                {orders.map((order) => (
-                  <div key={order.id}>
-                    <OrderCard
-                      order={order}
-                      isExpanded={expandedOrder === order.id}
-                      onToggleExpansion={toggleOrderExpansion}
-                      onCancelOrder={() => {}} // Drivers can't cancel orders
-                      onRescheduleSuccess={() => {}}
-                      isDriverView={true}
-                      onStatusUpdate={updateOrderStatus}
-                    />
-                  </div>
-                ))}
-              </div>
-            </TabsContent>
-          </Tabs>
+            ))}
+          </div>
         )}
       </div>
     </div>

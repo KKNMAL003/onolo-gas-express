@@ -1,8 +1,11 @@
 
 import React from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
-import { Home, ClipboardList } from 'lucide-react';
+import { Home, ShoppingCart, MessageSquare, Menu, FileText, ClipboardList } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { useCart } from '@/contexts/CartContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { useCommunications } from '@/hooks/useCommunications';
 
 interface NavItem {
   icon: React.ComponentType<{ className?: string }>;
@@ -11,32 +14,54 @@ interface NavItem {
 }
 
 const navItems: NavItem[] = [
-  { icon: Home, label: 'Dashboard', path: '/' },
-  { icon: ClipboardList, label: 'Deliveries', path: '/deliveries' },
+  { icon: Home, label: 'Home', path: '/' },
+  { icon: FileText, label: 'Order', path: '/order' },
+  { icon: ShoppingCart, label: 'Cart', path: '/cart' },
+  { icon: MessageSquare, label: 'Chat', path: '/chat' },
+  { icon: ClipboardList, label: 'Orders', path: '/orders' },
+  { icon: Menu, label: 'Menu', path: '/menu' },
 ];
 
 export const BottomNavigation = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const { user } = useAuth();
+  const { getTotalItems } = useCart();
+  const { unreadCount } = useCommunications();
+  const totalItems = getTotalItems();
 
   return (
     <nav className="fixed bottom-0 left-0 right-0 bg-onolo-dark border-t border-onolo-dark-lighter">
       <div className="flex items-center justify-around py-2">
         {navItems.map((item) => {
           const isActive = location.pathname === item.path;
+          const isCart = item.path === '/cart';
+          const isChat = item.path === '/chat';
           
           return (
             <button
               key={item.path}
               onClick={() => navigate(item.path)}
               className={cn(
-                "flex flex-col items-center space-y-1 p-4 rounded-lg transition-all duration-200 relative",
+                "flex flex-col items-center space-y-1 p-2 rounded-lg transition-all duration-200 relative",
                 isActive 
                   ? "text-onolo-orange bg-onolo-orange/10 scale-105" 
                   : "text-onolo-gray hover:text-white hover:bg-onolo-dark-lighter"
               )}
             >
-              <item.icon className={cn("w-6 h-6", isActive && "drop-shadow-lg")} />
+              <div className="relative">
+                <item.icon className={cn("w-6 h-6", isActive && "drop-shadow-lg")} />
+                {isCart && totalItems > 0 && (
+                  <div className="absolute -top-2 -right-2 bg-red-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">
+                    {totalItems > 9 ? '9+' : totalItems}
+                  </div>
+                )}
+                {isChat && user && unreadCount > 0 && (
+                  <div className="absolute -top-2 -right-2 bg-onolo-orange text-white text-xs rounded-full w-5 h-5 flex items-center justify-center font-bold">
+                    {unreadCount > 9 ? '9+' : unreadCount}
+                  </div>
+                )}
+              </div>
               <span className={cn(
                 "text-xs font-medium",
                 isActive && "font-bold"
